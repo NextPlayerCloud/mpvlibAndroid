@@ -34,6 +34,6 @@ case "$ndk_triple" in
 	;;
 esac
 
-../Configure $target no-shared
-make -j$cores
+../Configure $target no-shared no-tests
+make -j$cores build_libs
 make DESTDIR="$prefix_dir" install_sw

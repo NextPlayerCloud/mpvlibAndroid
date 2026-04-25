@@ -3,75 +3,291 @@ name: release
 on:
   push:
     tags:
-      - '*'
+      - "*"
 
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing tag to release manually, example: v1.0.0"
+        required: true
+        type: string
+      draft:
+        description: "Create release as draft"
+        required: true
+        default: true
+        type: boolean
+      prerelease:
+        description: "Mark release as prerelease"
+        required: true
+        default: false
+        type: boolean
+
+concurrency:
+  group: release-${{ github.ref }}-${{ inputs.release_tag || '' }}
+  cancel-in-progress: false
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  release:
+    name: Build and publish release
+    runs-on: ubuntu-24.04
 
     permissions:
       contents: write
 
+    env:
+      CACHE_MODE: folder
+      CACHE_FOLDER: ${{ github.workspace }}/gh-cache
+
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_MAXSIZE: 5G
+      CCACHE_COMPRESS: "true"
+
+      GRADLE_OPTS: >-
+        -Xmx4G
+        -Dorg.gradle.daemon=false
+        -Dorg.gradle.caching=true
+        -Dorg.gradle.parallel=true
+        -Dorg.gradle.configureondemand=true
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: Resolve release tag
+        id: resolve_tag
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION_TAG="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION_TAG="${{ inputs.release_tag }}"
+          fi
+
+          if [[ -z "$VERSION_TAG" ]]; then
+            echo "Release tag is empty."
+            exit 1
+          fi
+
+          echo "VERSION_TAG=$VERSION_TAG" >> "$GITHUB_ENV"
+          echo "version_tag=$VERSION_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          java-version: '17'
+          fetch-depth: 0
+          ref: ${{ steps.resolve_tag.outputs.version_tag }}
+
+      - name: Verify release tag exists
+        run: |
+          set -euo pipefail
+
+          git fetch --force --tags
+
+          if ! git rev-parse "$VERSION_TAG" >/dev/null 2>&1; then
+            echo "Tag '$VERSION_TAG' does not exist."
+            echo "Create it first:"
+            echo "git tag $VERSION_TAG"
+            echo "git push origin $VERSION_TAG"
+            exit 1
+          fi
+
+          echo "Using release tag: $VERSION_TAG"
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
           distribution: temurin
+          cache: gradle
 
-      - name: Export env vars
-        run: buildscripts/include/ci.sh export >>$GITHUB_ENV
+      - name: Setup Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
 
-      - name: Install deps
+      - name: Export CI environment variables
+        run: |
+          buildscripts/include/ci.sh export >> "$GITHUB_ENV"
+
+      - name: Restore release build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            gh-cache/
+            .ccache/
+            ~/.gradle/caches/
+            ~/.gradle/wrapper/
+            ~/.android/
+          key: release-${{ runner.os }}-${{ hashFiles('buildscripts/**/*.sh', 'buildscripts/include/*.sh', '**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            release-${{ runner.os }}-
+            build-${{ runner.os }}-
+
+      - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install autoconf pkg-config libtool ninja-build python3-pip
-          sudo pip3 install meson jinja2 jsonschema
+          sudo apt-get install -y \
+            autoconf \
+            automake \
+            build-essential \
+            ccache \
+            cmake \
+            gettext \
+            gperf \
+            libtool \
+            nasm \
+            ninja-build \
+            pkg-config \
+            python3 \
+            python3-pip \
+            unzip \
+            wget
 
-      - name: Build the release artifacts (all architectures)
+      - name: Install Python build dependencies
         run: |
-          set -x
+          python3 -m pip install --upgrade pip
+          python3 -m pip install --upgrade meson jinja2 jsonschema
+
+      - name: Download and restore native dependencies
+        run: |
+          set -euxo pipefail
+          mkdir -p "$CACHE_FOLDER"
+          buildscripts/include/ci.sh install
+
+      - name: Show ccache stats before build
+        run: |
+          ccache --zero-stats || true
+          ccache --show-stats || true
+
+      - name: Build release AAR for all Android architectures
+        run: |
+          set -euxo pipefail
+
           unset ANDROID_SDK_ROOT
+
           cd buildscripts
+
           ./download.sh > /dev/null
-          # Build mpv for all architectures
-          ./buildall.sh --arch armv7l mpv
-          ./buildall.sh --arch arm64 mpv
-          ./buildall.sh --arch x86 mpv
-          ./buildall.sh --arch x86_64 mpv
-          # Build the combined .aar with all architectures
-          ./buildall.sh -n
-        env:
-          GRADLE_OPTS: -Xmx4G
 
-      - name: Get tag name
-        if: startsWith(github.ref, 'refs/tags/')
+          for arch in armv7l arm64 x86 x86_64; do
+            ./buildall.sh --arch "$arch" mpv
+            ./buildall.sh --arch "$arch" python
+          done
+
+          ./buildall.sh -n mpv-android
+
+      - name: Show ccache stats after build
+        if: always()
         run: |
-          set -x
-          echo "VERSION_TAG=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
+          ccache --show-stats || true
 
-      - name: Copy build artifacts
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Stage release files
         run: |
-          set -e
-          mv app/build/outputs/aar/app-release.aar mpv-android-lib-${{ env.VERSION_TAG }}.aar
+          set -euxo pipefail
 
-      - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/')
+          mkdir -p dist
+
+          AAR_PATH="app/build/outputs/aar/app-release.aar"
+          RELEASE_AAR="dist/mpv-android-lib-${VERSION_TAG}.aar"
+
+          if [ ! -f "$AAR_PATH" ]; then
+            echo "AAR file not found at: $AAR_PATH"
+            find app/build/outputs -type f || true
+            exit 1
+          fi
+
+          cp "$AAR_PATH" "$RELEASE_AAR"
+
+          sha256sum "$RELEASE_AAR" > "dist/mpv-android-lib-${VERSION_TAG}.aar.sha256"
+
+      - name: Generate release notes from commit history
+        run: |
+          set -euo pipefail
+
+          RELEASE_NOTES="dist/release-notes-${VERSION_TAG}.md"
+
+          CURRENT_COMMIT="$(git rev-list -n 1 "$VERSION_TAG")"
+          PREVIOUS_TAG="$(git describe --tags --abbrev=0 "${VERSION_TAG}^" 2>/dev/null || true)"
+
+          {
+            echo "# mpv-android-lib ${VERSION_TAG}"
+            echo ""
+            echo "## Release Artifact"
+            echo ""
+            echo "- \`mpv-android-lib-${VERSION_TAG}.aar\`"
+            echo "- \`mpv-android-lib-${VERSION_TAG}.aar.sha256\`"
+            echo ""
+            echo "## Included Android ABIs"
+            echo ""
+            echo "- \`armeabi-v7a\` / \`armv7l\`"
+            echo "- \`arm64-v8a\` / \`arm64\`"
+            echo "- \`x86\`"
+            echo "- \`x86_64\`"
+            echo ""
+            echo "## Build Environment"
+            echo ""
+            echo "- Runner: \`${RUNNER_OS}\`"
+            echo "- Ubuntu: \`24.04\`"
+            echo "- Java: \`17 / Temurin\`"
+            echo "- Python: \`3.13\`"
+            echo "- Repository: \`${GITHUB_REPOSITORY}\`"
+            echo "- Tag: \`${VERSION_TAG}\`"
+            echo "- Commit: \`${CURRENT_COMMIT}\`"
+            echo ""
+
+            echo "## Checksums"
+            echo ""
+            echo '```text'
+            cat "dist/mpv-android-lib-${VERSION_TAG}.aar.sha256"
+            echo '```'
+            echo ""
+
+            if [[ -n "$PREVIOUS_TAG" ]]; then
+              echo "## Commit History"
+              echo ""
+              echo "Changes from \`${PREVIOUS_TAG}\` to \`${VERSION_TAG}\`:"
+              echo ""
+
+              if git log --oneline "${PREVIOUS_TAG}..${VERSION_TAG}" | grep -q .; then
+                git log \
+                  --pretty=format:"- %s ([%h](https://github.com/${GITHUB_REPOSITORY}/commit/%H)) by %an" \
+                  "${PREVIOUS_TAG}..${VERSION_TAG}"
+              else
+                echo "- No commits found between \`${PREVIOUS_TAG}\` and \`${VERSION_TAG}\`."
+              fi
+            else
+              echo "## Commit History"
+              echo ""
+              echo "No previous tag found. Showing commits reachable from \`${VERSION_TAG}\`:"
+              echo ""
+
+              git log \
+                --pretty=format:"- %s ([%h](https://github.com/${GITHUB_REPOSITORY}/commit/%H)) by %an" \
+                "$VERSION_TAG"
+            fi
+
+            echo ""
+          } > "$RELEASE_NOTES"
+
+          cat "$RELEASE_NOTES"
+
+      - name: Upload release files to workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mpv-android-lib-${{ env.VERSION_TAG }}
+          path: |
+            dist/mpv-android-lib-${{ env.VERSION_TAG }}.aar
+            dist/mpv-android-lib-${{ env.VERSION_TAG }}.aar.sha256
+            dist/release-notes-${{ env.VERSION_TAG }}.md
+          if-no-files-found: error
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION_TAG }}
           name: mpv-android-lib ${{ env.VERSION_TAG }}
-          body: |
-            library version ${{ env.VERSION_TAG }}
-            - armeabi-v7a (armv7l)
-            - arm64-v8a (arm64)
-            - x86
-            - x86_64
+          body_path: dist/release-notes-${{ env.VERSION_TAG }}.md
           files: |
-            mpv-android-lib-${{ env.VERSION_TAG }}.aar
-          draft: true
-          prerelease: false
-
+            dist/mpv-android-lib-${{ env.VERSION_TAG }}.aar
+            dist/mpv-android-lib-${{ env.VERSION_TAG }}.aar.sha256
+            dist/release-notes-${{ env.VERSION_TAG }}.md
+          draft: ${{ github.event_name == 'workflow_dispatch' && inputs.draft || true }}
+          prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}

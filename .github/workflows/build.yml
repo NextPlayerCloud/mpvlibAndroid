@@ -1,82 +1,150 @@
 name: build
 
 on:
-  - push
-  - pull_request
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - "**"
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
+    name: Build Android AAR
     runs-on: ubuntu-24.04
+
     permissions:
-      contents: write
+      contents: read
+
+    env:
+      CACHE_MODE: folder
+      CACHE_FOLDER: ${{ github.workspace }}/gh-cache
+
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_MAXSIZE: 5G
+      CCACHE_COMPRESS: "true"
+
+      GRADLE_OPTS: >-
+        -Xmx4G
+        -Dorg.gradle.daemon=false
+        -Dorg.gradle.caching=true
+        -Dorg.gradle.parallel=true
+        -Dorg.gradle.configureondemand=true
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: "17"
           distribution: temurin
-      - uses: actions/setup-python@v5
+          cache: gradle
+
+      - name: Setup Python 3.13
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: "3.13"
 
-      - name: Export env vars
-        run: buildscripts/include/ci.sh export >>$GITHUB_ENV
+      - name: Export CI environment variables
+        run: |
+          buildscripts/include/ci.sh export >> "$GITHUB_ENV"
 
-      - uses: actions/cache@v4
+      - name: Restore project build cache
+        uses: actions/cache@v4
         with:
-          path: gh-cache/
-          key: "prefix-${{ hashFiles('buildscripts/**/*.sh', 'buildscripts/include/*.sh') }}"
-          restore-keys: ""
-          enableCrossOsArchive: true
+          path: |
+            gh-cache/
+            .ccache/
+            ~/.gradle/caches/
+            ~/.gradle/wrapper/
+            ~/.android/
+          key: build-${{ runner.os }}-${{ hashFiles('buildscripts/**/*.sh', 'buildscripts/include/*.sh', '**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            build-${{ runner.os }}-
 
-      - name: Install deps
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             autoconf \
             automake \
             build-essential \
+            ccache \
             cmake \
-            pkg-config \
+            gettext \
+            gperf \
             libtool \
+            nasm \
             ninja-build \
+            pkg-config \
             python3 \
             python3-pip \
-            nasm \
             unzip \
-            wget \
-            gettext \
-            gperf
-          python3 -m pip install --upgrade pip
-          python3 -m pip install meson jinja2 jsonschema
+            wget
 
-      - name: Download deps
+      - name: Install Python build dependencies
         run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install --upgrade meson jinja2 jsonschema
+
+      - name: Download and restore native dependencies
+        run: |
+          set -euxo pipefail
           mkdir -p "$CACHE_FOLDER"
           buildscripts/include/ci.sh install
-        env:
-          CACHE_MODE: "folder"
-          CACHE_FOLDER: "${{ github.workspace }}/gh-cache"
 
-      - name: Build the release artifacts (all architectures)
+      - name: Show ccache stats before build
         run: |
-          set -x
+          ccache --zero-stats || true
+          ccache --show-stats || true
+
+      - name: Build AAR for all Android architectures
+        run: |
+          set -euxo pipefail
+
           unset ANDROID_SDK_ROOT
+
           cd buildscripts
+
           ./download.sh > /dev/null
+
           for arch in armv7l arm64 x86 x86_64; do
             ./buildall.sh --arch "$arch" mpv
             ./buildall.sh --arch "$arch" python
           done
+
           ./buildall.sh -n mpv-android
+
+      - name: Show ccache stats after build
+        if: always()
+        run: |
+          ccache --show-stats || true
 
       - name: Stage AAR artifact
         run: |
-          mkdir -p dist
-          cp app/build/outputs/aar/app-release.aar dist/mpvlib.aar
+          set -euxo pipefail
 
-      - uses: actions/upload-artifact@v4
+          mkdir -p dist
+
+          AAR_PATH="app/build/outputs/aar/app-release.aar"
+
+          if [ ! -f "$AAR_PATH" ]; then
+            echo "AAR file not found at: $AAR_PATH"
+            find app/build/outputs -type f || true
+            exit 1
+          fi
+
+          cp "$AAR_PATH" dist/mpvlib.aar
+
+      - name: Upload AAR artifact
+        uses: actions/upload-artifact@v4
         with:
           name: mpvlib
           path: dist/mpvlib.aar
