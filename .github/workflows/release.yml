@@ -28,30 +28,36 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install autoconf pkg-config libtool ninja-build python3-pip
-          sudo pip3 install meson
+          sudo pip3 install meson jinja2 jsonschema
 
-      - name: Build the release artifacts
+      - name: Build the release artifacts (all architectures)
         run: |
           set -x
           unset ANDROID_SDK_ROOT
           cd buildscripts
           ./download.sh > /dev/null
+          # Build mpv for all architectures
+          ./buildall.sh --arch armv7l mpv
+          ./buildall.sh --arch arm64 mpv
           ./buildall.sh --arch x86 mpv
           ./buildall.sh --arch x86_64 mpv
-          ./buildall.sh --arch arm64 mpv
-          ./buildall.sh
+          # Build the combined .aar with all architectures
+          ./buildall.sh -n
         env:
           GRADLE_OPTS: -Xmx4G
+
       - name: Get tag name
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           set -x
           echo "VERSION_TAG=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
+
       - name: Copy build artifacts
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           set -e
           mv app/build/outputs/aar/app-release.aar mpv-android-lib-${{ env.VERSION_TAG }}.aar
+
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
@@ -60,6 +66,10 @@ jobs:
           name: mpv-android-lib ${{ env.VERSION_TAG }}
           body: |
             library version ${{ env.VERSION_TAG }}
+            - armeabi-v7a (armv7l)
+            - arm64-v8a (arm64)
+            - x86
+            - x86_64
           files: |
             mpv-android-lib-${{ env.VERSION_TAG }}.aar
           draft: true

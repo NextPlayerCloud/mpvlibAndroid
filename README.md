@@ -15,7 +15,7 @@ This library provides Android bindings for the mpv media player, allowing develo
 
 ## Requirements
 
-- Android 5.0 (API level 21) or higher
+- Android 7.0 (API level 24) or higher
 - Android Studio with Gradle support
 
 ## Installation

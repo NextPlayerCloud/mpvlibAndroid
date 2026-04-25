@@ -8,7 +8,7 @@ version = "0.1.10"
 
 android {
     namespace 'is.xyz.mpv'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         minSdkVersion 24

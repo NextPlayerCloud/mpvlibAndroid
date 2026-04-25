@@ -47,6 +47,10 @@ object Utils {
                 out?.close()
             }
         }
+
+        if (!YTDLPManager.prepareAssets(context)) {
+            Log.w(TAG, "YTDLP assets are incomplete; youtube-dl support will stay disabled")
+        }
     }
 
     fun findRealPath(fd: Int): String? {
@@ -227,8 +231,8 @@ object Utils {
             val albumEmpty = mediaAlbum.isNullOrEmpty()
             return when {
                 !artistEmpty && !albumEmpty -> "$mediaArtist / $mediaAlbum"
-                !artistEmpty -> mediaAlbum
-                !albumEmpty -> mediaArtist
+                !artistEmpty -> mediaArtist
+                !albumEmpty -> mediaAlbum
                 else -> null
             }
         }
@@ -293,6 +297,7 @@ object Utils {
         val buildDate: String,
         val libPlacebo: String,
         val ffmpeg: String,
+        val ytDlp: String,
     )
 
     val VERSIONS = Versions(
@@ -300,5 +305,6 @@ object Utils {
         buildDate = "%DATE%",
         libPlacebo = "%LIBPLACEBO_VERSION%",
         ffmpeg = "%FFMPEG_VERSION%",
+        ytDlp = "%YTDLP_VERSION%",
     )
 }

@@ -85,6 +85,13 @@ msg "Building mpv"
 	exit 1
 }
 
+for arch in armv7l arm64 x86 x86_64; do
+	if [ -d "prefix/$arch" ]; then
+		msg "Building python for $arch"
+		./buildall.sh --arch "$arch" -n python
+	fi
+done
+
 msg "Building mpv-android"
 ./buildall.sh -n
 
