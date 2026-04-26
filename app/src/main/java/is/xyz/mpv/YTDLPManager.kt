@@ -55,7 +55,7 @@ object YTDLPManager {
 
         val launcher = ytdlpPath ?: return false
         MPVLib.setOptionString("ytdl", "yes")
-        MPVLib.setOptionString("ytdl-path", launcher)
+        MPVLib.setOptionString("script-opts-append", "ytdl_hook-ytdl_path=$launcher")
         initialized = true
 
         Log.i(TAG, "YTDLP initialized: $launcher")
@@ -175,7 +175,7 @@ object YTDLPManager {
     fun updateMpvOptions(ytdlFormat: String? = null) {
         ytdlpPath?.let {
             MPVLib.setOptionString("ytdl", "yes")
-            MPVLib.setOptionString("ytdl-path", it)
+            MPVLib.setOptionString("script-opts-append", "ytdl_hook-ytdl_path=$it")
             if (!ytdlFormat.isNullOrEmpty()) {
                 MPVLib.setOptionString("ytdl-format", ytdlFormat)
             }

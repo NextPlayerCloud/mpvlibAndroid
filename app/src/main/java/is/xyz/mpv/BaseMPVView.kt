@@ -28,8 +28,15 @@ abstract class BaseMPVView(context: Context, attrs: AttributeSet) : SurfaceView(
 
         MPVLib.setOptionString("config", "yes")
         MPVLib.setOptionString("config-dir", configDir)
-        for (opt in arrayOf("gpu-shader-cache-dir", "icc-cache-dir"))
+        for (opt in arrayOf("gpu-shader-cache-dir", "icc-cache-dir")) {
             MPVLib.setOptionString(opt, cacheDir)
+        }
+        val ytdlpPath = YtdlpInstaller.install(context)
+        MPVLib.setOptionString("ytdl", "yes")
+        MPVLib.setOptionString(
+            "script-opts-append",
+            "ytdl_hook-ytdl_path=$ytdlpPath"
+        )
         initOptions()
 
         MPVLib.init()
