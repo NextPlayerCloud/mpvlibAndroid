@@ -16,8 +16,6 @@ v_fribidi=1.0.16
 v_freetype=2.14.3
 v_mbedtls=3.6.5
 v_openssl=3.5.5
-v_python=3.13.12
-v_ytdlp=2026.03.17
 v_mujs=1.3.9
 
 
@@ -35,11 +33,10 @@ dep_libass=(freetype2 fribidi harfbuzz unibreak)
 dep_lua=()
 dep_mujs=()
 dep_openssl=()
-dep_python=(openssl)
 dep_shaderc=()
 dep_libplacebo=(shaderc)
 dep_mpv=(ffmpeg libass lua libplacebo mujs)
-dep_mpv_android=(mpv python)
+dep_mpv_android=(mpv)
 
 
 ## for CI workflow

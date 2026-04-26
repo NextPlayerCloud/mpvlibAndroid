@@ -89,18 +89,4 @@ HEREDOC
 # mpv
 [ ! -d mpv ] && git clone https://github.com/mpv-player/mpv
 
-# python
-if [ ! -d python ]; then
-	mkdir python
-	$WGET https://www.python.org/ftp/python/$v_python/Python-$v_python.tar.xz -O - | \
-		tar -xJ -C python --strip-components=1
-fi
-
-# yt-dlp
-if [ ! -f yt-dlp/yt-dlp ]; then
-	mkdir -p yt-dlp
-	$WGET https://github.com/yt-dlp/yt-dlp/releases/download/$v_ytdlp/yt-dlp -O yt-dlp/yt-dlp
-	chmod +x yt-dlp/yt-dlp
-fi
-
 cd ..

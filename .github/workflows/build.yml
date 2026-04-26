@@ -117,7 +117,6 @@ jobs:
 
           for arch in armv7l arm64 x86 x86_64; do
             ./buildall.sh --arch "$arch" mpv
-            ./buildall.sh --arch "$arch" python
           done
 
           ./buildall.sh -n mpv-android
