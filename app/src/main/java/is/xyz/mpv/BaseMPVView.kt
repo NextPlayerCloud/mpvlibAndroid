@@ -117,7 +117,7 @@ abstract class BaseMPVView(context: Context, attrs: AttributeSet) : SurfaceView(
     }
 
     private fun clearAllProperties() {
-        listOf(propInt, propDouble, propString, propFloat, propLong, propNode).forEach {
+        listOf(propInt, propBoolean, propDouble, propString, propFloat, propLong, propNode).forEach {
             it.map.clear()
         }
     }

@@ -33,6 +33,8 @@ jni_func(void, detachSurface) {
     if (result < 0)
          ALOGE("mpv_set_option(wid) returned error %s", mpv_error_string(result));
 
-    env->DeleteGlobalRef(surface);
-    surface = NULL;
+    if (surface) {
+        env->DeleteGlobalRef(surface);
+        surface = NULL;
+    }
 }
