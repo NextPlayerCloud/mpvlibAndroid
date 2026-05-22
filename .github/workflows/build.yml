@@ -146,7 +146,10 @@ jobs:
 
           cd buildscripts
 
-          for arch in armv7l arm64 x86 x86_64; do
+          source include/build_config.sh
+          arches=(armv7l arm64)
+          [ "$ENABLE_X86_ARCH" = "true" ] && arches+=(x86 x86_64)
+          for arch in "${arches[@]}"; do
             ./buildall.sh --arch "$arch" -n mpv
           done
 

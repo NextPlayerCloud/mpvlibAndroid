@@ -4,8 +4,12 @@
 cd "$( dirname "${BASH_SOURCE[0]}" )/.."
 
 . ./include/depinfo.sh
+. ./include/build_config.sh
 
-build_arches=(armv7l arm64 x86 x86_64)
+build_arches=(armv7l arm64)
+if [ "$ENABLE_X86_ARCH" = "true" ]; then
+    build_arches+=(x86 x86_64)
+fi
 
 msg() {
 	printf '==> %s\n' "$1"
@@ -52,16 +56,21 @@ setup_ccache_wrappers() {
 	local ccache_bin
 	ccache_bin=$(command -v ccache)
 	local compiler
-	for compiler in \
-		armv7a-linux-androideabi24-clang \
-		armv7a-linux-androideabi24-clang++ \
-		aarch64-linux-android24-clang \
-		aarch64-linux-android24-clang++ \
-		i686-linux-android24-clang \
-		i686-linux-android24-clang++ \
-		x86_64-linux-android24-clang \
-		x86_64-linux-android24-clang++
-	do
+	local compilers=(
+		armv7a-linux-androideabi24-clang
+		armv7a-linux-androideabi24-clang++
+		aarch64-linux-android24-clang
+		aarch64-linux-android24-clang++
+	)
+	if [ "$ENABLE_X86_ARCH" = "true" ]; then
+		compilers+=(
+			i686-linux-android24-clang
+			i686-linux-android24-clang++
+			x86_64-linux-android24-clang
+			x86_64-linux-android24-clang++
+		)
+	fi
+	for compiler in "${compilers[@]}"; do
 		ln -sf "$ccache_bin" "ccache-wrappers/$compiler"
 	done
 }
