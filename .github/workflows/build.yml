@@ -50,6 +50,11 @@ jobs:
           distribution: temurin
           cache: gradle
 
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Export CI environment variables
         run: |
           buildscripts/include/ci.sh export >> "$GITHUB_ENV"
@@ -95,12 +100,18 @@ jobs:
             gettext \
             gperf \
             libtool \
-            meson \
             nasm \
             ninja-build \
             pkg-config \
+            python3 \
+            python3-pip \
             unzip \
             wget
+
+      - name: Install Python build dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install --upgrade meson jinja2 jsonschema
 
       - name: Download and restore native dependencies
         run: |

@@ -11,10 +11,11 @@ if [ "$os" == "linux" ]; then
 	if [ $IN_CI -eq 0 ]; then
 		if hash yum &>/dev/null; then
 			sudo yum install autoconf pkgconfig libtool ninja-build \
-				unzip wget meson python3 nasm
+				unzip wget meson  python3 nasm
 		elif apt-get -v &>/dev/null; then
 			sudo apt-get install autoconf pkg-config libtool ninja-build \
-				unzip wget meson python3 nasm
+				unzip wget meson  python3  nasm
+			sudo pip3 install meson
 		else
 			echo "Note: dependencies were not installed, you have to do that manually."
 		fi

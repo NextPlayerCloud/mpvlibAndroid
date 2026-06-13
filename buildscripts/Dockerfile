@@ -22,7 +22,6 @@ RUN apt-get update && apt-get install -y \
     clang \
     cmake \
     ninja-build \
-    meson \
     autoconf \
     automake \
     libtool-bin \
@@ -40,7 +39,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # required by mbedtls
-RUN pip3 install --break-system-packages jsonschema jinja2
+RUN pip3 install --break-system-packages jsonschema jinja2 && \
+    pip3 install --break-system-packages --upgrade meson
 
 RUN mkdir -p /home/mpvbuilder/mpv-android
 WORKDIR /home/mpvbuilder/mpv-android

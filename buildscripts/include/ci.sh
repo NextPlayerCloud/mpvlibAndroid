@@ -4,6 +4,19 @@
 cd "$( dirname "${BASH_SOURCE[0]}" )/.."
 
 . ./include/depinfo.sh
+. ./include/build_config.sh
+
+ci_build_arches=(
+	armv7l
+	arm64
+)
+[ "$ENABLE_X86_ARCH" = "true" ] && ci_build_arches+=(
+	x86
+	x86_64
+)
+
+ci_arch_tag=$(IFS=-; echo "${ci_build_arches[*]}")
+ci_cache_identifier="${ci_tarball%.tgz}-abi-${ci_arch_tag}.tgz"
 
 msg() {
 	printf '==> %s\n' "$1"
@@ -17,8 +30,8 @@ fetch_prefix() {
 		else
 			echo "Cache seems to be empty"
 		fi
-		printf 'Expecting "%s",\nfound     "%s".\n' "$ci_tarball" "$text"
-		if [[ "$text" == "$ci_tarball" ]]; then
+		printf 'Expecting "%s",\nfound     "%s".\n' "$ci_cache_identifier" "$text"
+		if [[ "$text" == "$ci_cache_identifier" ]]; then
 			tar -xzf "$CACHE_FOLDER/data.tgz" -C prefix && return 0
 		fi
 	fi
@@ -26,21 +39,24 @@ fetch_prefix() {
 }
 
 build_prefix() {
-	msg "Building the prefix ($ci_tarball)..."
+	msg "Building the prefix ($ci_cache_identifier)..."
 
 	msg "Fetching deps"
 	IN_CI=1 ./include/download-deps.sh
 
-	# build everything mpv depends on (but not mpv itself)
-	for x in ${dep_mpv[@]}; do
-		msg "Building $x"
-		./buildall.sh $x
+	# Build everything mpv depends on for every packaged ABI, but not mpv itself.
+	for arch in "${ci_build_arches[@]}"; do
+		msg "Building dependency prefix for $arch"
+		for x in ${dep_mpv[@]}; do
+			msg "Building $x for $arch"
+			./buildall.sh --arch "$arch" "$x"
+		done
 	done
 
 	if [[ "$CACHE_MODE" == folder && -w "$CACHE_FOLDER" ]]; then
 		msg "Compressing the prefix"
 		tar -cvzf "$CACHE_FOLDER/data.tgz" -C prefix .
-		echo "$ci_tarball" >"$CACHE_FOLDER/id.txt"
+		echo "$ci_cache_identifier" >"$CACHE_FOLDER/id.txt"
 	fi
 }
 
@@ -48,14 +64,14 @@ export WGET="wget --progress=bar:force"
 
 if [ "$1" = "export" ]; then
 	# export variable with unique cache identifier
-	echo "CACHE_IDENTIFIER=$ci_tarball"
+	echo "CACHE_IDENTIFIER=$ci_cache_identifier"
 	exit 0
 elif [ "$1" = "install" ]; then
 	# install deps
 	if [[ -n "$ANDROID_HOME" && -d "$ANDROID_HOME" ]]; then
 		msg "Linking existing SDK"
 		mkdir -p sdk
-		ln -sv "$ANDROID_HOME" sdk/android-sdk-linux
+		ln -sfv "$ANDROID_HOME" sdk/android-sdk-linux
 	fi
 
 	msg "Fetching SDK + NDK"
