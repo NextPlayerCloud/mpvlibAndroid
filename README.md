@@ -1,10 +1,10 @@
 # mpvlib Android
 
-**MpvRx / mpvlibAndroid** — An Android video player library built on mpv with full **yt-dlp**, **Python 3.13**, and **libcurl** support baked in.
+**MpvRx / mpvlibAndroid** — An Android video player library built on mpv.
 
 ## What is This?
 
-This library brings the full power of mpv to Android — play any video, stream YouTube links, run Python scripts, download with curl, generate thumbnails, and more. All through a simple Kotlin API.
+This library brings the full power of mpv to Android — play any video, generate thumbnails, and more. All through a simple Kotlin API.
 
 ## Features
 
@@ -13,22 +13,6 @@ This library brings the full power of mpv to Android — play any video, stream 
 - 200+ formats supported (mp4, mkv, avi, mov, webm, flac, mp3, gif, etc.)
 - 15+ network protocols: http, https, rtmp, rtmps, rtp, rtsp, mms, tcp, udp, and more
 - Android Surface rendering with hardware acceleration
-
-### ▶️ yt-dlp Support
-- YouTube, Twitch, and 1000+ sites supported out of the box
-- yt-dlp v2026.03.17 bundled and ready
-- Just pass a YouTube URL — yt-dlp handles the rest
-
-### 🐍 Python 3.13 Runtime
-- Full Python 3.13.12 runtime compiled for Android
-- Bundled per-architecture (arm64, arm32, x86, x86_64)
-- Includes stdlib with common modules (ssl, bz2, ctypes, lzma, hashlib, uuid)
-- Used by yt-dlp internally, also available for your own scripts
-
-### 🌐 libcurl (HTTP Networking)
-- Built with MbedTLS for secure connections
-- Optimized for minimal size — only the protocols actually needed
-- Powers network streaming and downloads
 
 ### 🖼️ Thumbnail Generation
 - Two engines: mpv-based and direct FFmpeg
@@ -39,7 +23,6 @@ This library brings the full power of mpv to Android — play any video, stream 
 ### 📜 Scripting
 - **Lua** 5.2.4 — mpv scripts work as-is
 - **JavaScript** via MuJS 1.3.9
-- **Python** 3.13 — for custom logic and automation
 
 ### 🔒 Security
 - SSL/TLS via both MbedTLS and OpenSSL
@@ -85,8 +68,7 @@ import is.xyz.mpv.MPVLib
 MPVLib.create(context)
 MPVLib.init()
 
-// Play anything — local file, YouTube URL, stream
-MPVLib.command("loadfile", "https://youtube.com/watch?v=...")
+// Play anything — local file, stream
 MPVLib.command("loadfile", "/sdcard/video.mp4")
 
 // Controls
@@ -104,8 +86,7 @@ FastThumbnails.generate("video.mp4", positionSec = 30.0, width = 320)
 
 ```bash
 sudo apt install openjdk-17-jdk ninja-build cmake autoconf automake \
-    libtool-bin pkg-config meson python3 python3-pip wget
-pip install meson jinja2 jsonschema
+    libtool-bin pkg-config meson wget
 ```
 
 ### Commands
@@ -139,9 +120,6 @@ Output: `app/build/outputs/aar/app-release.aar`
 
 | Component | Version |
 |-----------|---------|
-| yt-dlp | 2026.03.17 |
-| Python | 3.13.12 |
-| libcurl | 8.20.0 |
 | Lua | 5.2.4 |
 | MuJS (JavaScript) | 1.3.9 |
 | MbedTLS | 3.6.5 |

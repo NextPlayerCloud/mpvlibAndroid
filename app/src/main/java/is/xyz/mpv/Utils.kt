@@ -47,8 +47,6 @@ object Utils {
                 out?.close()
             }
         }
-
-
     }
 
     fun findRealPath(fd: Int): String? {
@@ -295,7 +293,6 @@ object Utils {
         val buildDate: String,
         val libPlacebo: String,
         val ffmpeg: String,
-        val ytDlp: String,
     )
 
     val VERSIONS = Versions(
@@ -303,6 +300,5 @@ object Utils {
         buildDate = "%DATE%",
         libPlacebo = "%LIBPLACEBO_VERSION%",
         ffmpeg = "%FFMPEG_VERSION%",
-        ytDlp = "%YTDLP_VERSION%",
     )
 }
