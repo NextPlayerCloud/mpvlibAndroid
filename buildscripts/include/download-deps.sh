@@ -24,7 +24,7 @@ if [ ! -d ffmpeg ]; then
 	[ $IN_CI -eq 1 ] && git -C ffmpeg checkout $v_ci_ffmpeg
 fi
 
-# freetype2 - latest is 2.14.3
+# freetype2
 if [ ! -d freetype2 ]; then
 	mkdir freetype2
 	$WGET https://download.savannah.gnu.org/releases/freetype/freetype-$v_freetype.tar.gz -O - | \
@@ -38,7 +38,7 @@ if [ ! -d fribidi ]; then
 		tar -xJ -C fribidi --strip-components=1
 fi
 
-# harfbuzz - latest is 14.2.0
+# harfbuzz
 if [ ! -d harfbuzz ]; then
 	mkdir harfbuzz
 	$WGET https://github.com/harfbuzz/harfbuzz/releases/download/$v_harfbuzz/harfbuzz-$v_harfbuzz.tar.xz -O - | \
@@ -50,6 +50,20 @@ if [ ! -d unibreak ]; then
 	mkdir unibreak
 	$WGET https://github.com/adah1972/libunibreak/releases/download/libunibreak_${v_unibreak//./_}/libunibreak-${v_unibreak}.tar.gz -O - | \
 		tar -xz -C unibreak --strip-components=1
+fi
+
+# libxml2
+if [ ! -d libxml2 ]; then
+	mkdir libxml2
+	$WGET https://gitlab.gnome.org/GNOME/libxml2/-/archive/v${v_libxml2}/libxml2-v${v_libxml2}.tar.gz -O - | \
+		tar -xz -C libxml2 --strip-components=1
+fi
+
+# fontconfig
+if [ ! -d fontconfig ]; then
+	mkdir fontconfig
+	$WGET https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/${v_fontconfig}/fontconfig-${v_fontconfig}.tar.gz -O - | \
+		tar -xz -C fontconfig --strip-components=1
 fi
 
 # libass - use GitHub mirror

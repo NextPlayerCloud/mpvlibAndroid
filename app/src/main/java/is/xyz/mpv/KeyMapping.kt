@@ -5,7 +5,7 @@ package `is`.xyz.mpv;
 import android.view.KeyEvent.*;
 
 // https://github.com/mpv-player/mpv/blob/master/input/keycodes.h
-val KeyMapping = mapOf(
+val KeyMapping: Map<Int, String> = mapOf(
     KEYCODE_SPACE to "SPACE",
     KEYCODE_ENTER to "ENTER",
     KEYCODE_TAB to "TAB",

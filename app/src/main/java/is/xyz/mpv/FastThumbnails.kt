@@ -2,12 +2,17 @@ package `is`.xyz.mpv
 
 import android.content.Context
 import android.graphics.Bitmap
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.min
 
 object FastThumbnails {
     private val initialized = AtomicBoolean(false)
+    private const val MAX_PARALLEL_THUMBNAILS = 4
     
     /**
      * Initialize the fast thumbnail system.
@@ -67,6 +72,14 @@ object FastThumbnails {
         
         require(dimension in 1..4096) {
             "Dimension must be between 1 and 4096 (got $dimension)"
+        }
+
+        require(position.isFinite() && position >= 0.0) {
+            "Position must be finite and non-negative (got $position)"
+        }
+
+        require(path.isNotEmpty()) {
+            "Path must not be empty"
         }
         
         return try {
@@ -131,9 +144,14 @@ object FastThumbnails {
         positions: List<Double>,
         dimension: Int = 512,
         useHwDec: Boolean = true
-    ): List<Bitmap?> = withContext(Dispatchers.IO) {
-        positions.map { position ->
-            generate(path, position, dimension, useHwDec)
+    ): List<Bitmap?> = coroutineScope {
+        val parallelism = min(MAX_PARALLEL_THUMBNAILS, positions.size.coerceAtLeast(1))
+        positions.chunked(parallelism).flatMap { chunk ->
+            chunk.map { position ->
+                async(Dispatchers.IO) {
+                    generate(path, position, dimension, useHwDec)
+                }
+            }.awaitAll()
         }
     }
     

@@ -21,15 +21,8 @@ void init_methods_cache(JNIEnv *env)
 {
     static std::mutex init_mutex;
     static bool methods_initialized = false;
-    
-    // Fast path: already initialized
-    if (methods_initialized)
-        return;
-    
-    // Slow path: need to initialize (thread-safe)
     std::lock_guard<std::mutex> lock(init_mutex);
     
-    // Double-check after acquiring lock
     if (methods_initialized)
         return;
 
@@ -44,6 +37,8 @@ void init_methods_cache(JNIEnv *env)
     android_graphics_Bitmap = FIND_CLASS("android/graphics/Bitmap");
     // createBitmap(int[], int, int, android.graphics.Bitmap$Config)
     android_graphics_Bitmap_createBitmap = env->GetStaticMethodID(android_graphics_Bitmap, "createBitmap", "([IIILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
+    // createBitmap(int, int, android.graphics.Bitmap$Config)
+    android_graphics_Bitmap_createBitmapWH = env->GetStaticMethodID(android_graphics_Bitmap, "createBitmap", "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
     android_graphics_Bitmap_Config = FIND_CLASS("android/graphics/Bitmap$Config");
     // static final android.graphics.Bitmap$Config ARGB_8888
     android_graphics_Bitmap_Config_ARGB_8888 = env->GetStaticFieldID(android_graphics_Bitmap_Config, "ARGB_8888", "Landroid/graphics/Bitmap$Config;");

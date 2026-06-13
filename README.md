@@ -122,14 +122,16 @@ Output: `app/build/outputs/aar/app-release.aar`
 |-----------|---------|
 | Lua | 5.2.4 |
 | MuJS (JavaScript) | 1.3.9 |
-| MbedTLS | 3.6.5 |
-| OpenSSL | 3.5.5 |
-| FFmpeg | n8.1 |
-| HarfBuzz | 14.2.0 |
+| MbedTLS | 3.6.6 |
+| OpenSSL | 3.5.7 |
+| FFmpeg | n8.1.1 |
+| HarfBuzz | 14.2.1 |
 | FreeType | 2.14.3 |
+| libxml2 | 2.15.3 |
+| fontconfig | 2.18.1 |
 | dav1d | latest |
 | libplacebo | latest |
-| Android NDK | r28c |
+| Android NDK | r29 |
 | Min API | 24 (Android 7.0) |
 
 ## License

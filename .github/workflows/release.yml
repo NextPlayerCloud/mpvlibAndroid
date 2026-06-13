@@ -146,6 +146,7 @@ jobs:
             gettext \
             gperf \
             libtool \
+            meson \
             nasm \
             ninja-build \
             pkg-config \
