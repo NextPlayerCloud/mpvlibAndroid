@@ -2,22 +2,17 @@ package `is`.xyz.mpv
 
 import android.content.Context
 import android.graphics.Bitmap
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.math.min
 
 object FastThumbnails {
     private val initialized = AtomicBoolean(false)
-    private const val MAX_PARALLEL_THUMBNAILS = 4
-    
+
     /**
      * Initialize the fast thumbnail system.
      * Call this once before generating thumbnails (typically in Application.onCreate).
-     * 
+     *
      * @param context Application context
      */
     @JvmStatic
@@ -26,18 +21,18 @@ object FastThumbnails {
             MPVLib.setThumbnailJavaVM(context.applicationContext)
         }
     }
-    
+
     /**
      * Check if initialized.
      */
     @JvmStatic
     fun isInitialized(): Boolean = initialized.get()
-    
+
     /**
      * Clear internal codec cache and hardware context.
      * Call this when you want to free up memory (e.g., onLowMemory callback).
      * The cache will be rebuilt automatically on next thumbnail generation.
-     * 
+     *
      * Note: Clearing the cache will make the next thumbnail generation slightly slower
      * as codecs need to be re-initialized, but subsequent calls will be fast again.
      */
@@ -47,10 +42,10 @@ object FastThumbnails {
             MPVLib.clearThumbnailCache()
         }
     }
-    
+
     /**
      * Generate thumbnail using fast FFmpeg direct API
-     * 
+     *
      * @param path File path or URL to the video
      * @param position Time position in seconds (default: 0.0)
      * @param dimension Max dimension for longest side (width or height) in pixels (default: 512)
@@ -69,19 +64,11 @@ object FastThumbnails {
         check(initialized.get()) {
             "FastThumbnails not initialized. Call initialize(context) first."
         }
-        
+
         require(dimension in 1..4096) {
             "Dimension must be between 1 and 4096 (got $dimension)"
         }
 
-        require(position.isFinite() && position >= 0.0) {
-            "Position must be finite and non-negative (got $position)"
-        }
-
-        require(path.isNotEmpty()) {
-            "Path must not be empty"
-        }
-        
         return try {
             MPVLib.grabThumbnailFast(path, position, dimension, useHwDec)
         } catch (e: Exception) {
@@ -89,10 +76,10 @@ object FastThumbnails {
             null
         }
     }
-    
+
     /**
      * Generate thumbnail asynchronously (IO dispatcher).
-     * 
+     *
      * @param path File path or URL
      * @param position Time position in seconds (default: 0.0)
      * @param dimension Max dimension for longest side (width or height) in pixels (default: 512)
@@ -107,10 +94,10 @@ object FastThumbnails {
     ): Bitmap? = withContext(Dispatchers.IO) {
         generate(path, position, dimension, useHwDec)
     }
-    
+
     /**
      * Generate multiple thumbnails at different positions.
-     * 
+     *
      * @param path File path
      * @param positions List of time positions
      * @param dimension Max dimension for longest side (width or height) in pixels (default: 512)
@@ -129,10 +116,10 @@ object FastThumbnails {
             generate(path, position, dimension, useHwDec)
         }
     }
-    
+
     /**
      * Generate multiple thumbnails asynchronously.
-     * 
+     *
      * @param path File path
      * @param positions List of positions
      * @param dimension Max dimension for longest side (width or height) in pixels (default: 512)
@@ -144,21 +131,16 @@ object FastThumbnails {
         positions: List<Double>,
         dimension: Int = 512,
         useHwDec: Boolean = true
-    ): List<Bitmap?> = coroutineScope {
-        val parallelism = min(MAX_PARALLEL_THUMBNAILS, positions.size.coerceAtLeast(1))
-        positions.chunked(parallelism).flatMap { chunk ->
-            chunk.map { position ->
-                async(Dispatchers.IO) {
-                    generate(path, position, dimension, useHwDec)
-                }
-            }.awaitAll()
+    ): List<Bitmap?> = withContext(Dispatchers.IO) {
+        positions.map { position ->
+            generate(path, position, dimension, useHwDec)
         }
     }
-    
+
     /**
      * Performance benchmark helper.
      * Generates a thumbnail and measures time taken.
-     * 
+     *
      * @param path File path
      * @param position Time position in seconds (default: 0.0)
      * @param dimension Max dimension for longest side (width or height) in pixels (default: 512)

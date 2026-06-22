@@ -16,8 +16,7 @@ UTIL_EXTERN jclass java_Integer, java_Double, java_Boolean;
 UTIL_EXTERN jmethodID java_Integer_init, java_Double_init, java_Boolean_init;
 
 UTIL_EXTERN jclass android_graphics_Bitmap, android_graphics_Bitmap_Config;
-UTIL_EXTERN jmethodID android_graphics_Bitmap_createBitmap,
-	android_graphics_Bitmap_createBitmapWH;
+UTIL_EXTERN jmethodID android_graphics_Bitmap_createBitmap;
 UTIL_EXTERN jfieldID android_graphics_Bitmap_Config_ARGB_8888;
 
 UTIL_EXTERN jclass mpv_MPVLib;

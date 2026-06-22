@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <chrono>
 #include <unordered_map>
-#include <cmath>
 
 #include <jni.h>
 #include <android/bitmap.h>
@@ -13,12 +12,8 @@
 extern "C" {
     #include <libavformat/avformat.h>
     #include <libavcodec/avcodec.h>
-    #include <libavutil/dict.h>
     #include <libavutil/imgutils.h>
-    #include <libavutil/hwcontext.h>
-    #include <libavutil/mathematics.h>
     #include <libavutil/opt.h>
-    #include <libavutil/pixdesc.h>
     #include <libswscale/swscale.h>
     #include <libavcodec/jni.h>
 };
@@ -327,6 +322,43 @@ static jobject frame_to_bitmap(JNIEnv *env, AVFrame *frame, int target_dimension
     if (width < 1) width = 1;
     if (height < 1) height = 1;
 
+    // Use fast bilinear scaling for speed
+    int sws_algorithm = SWS_FAST_BILINEAR;
+
+    // Create SwsContext for scaling and format conversion
+    // Android Bitmap.Config.ARGB_8888 expects BGRA byte order (little-endian)
+    struct SwsContext *sws_ctx = sws_getContext(
+        frame->width, frame->height, (AVPixelFormat)frame->format,
+        width, height, AV_PIX_FMT_BGRA,
+        sws_algorithm, NULL, NULL, NULL
+    );
+    
+    if (!sws_ctx) {
+        ALOGE("Thumbnail | Failed to create scaler");
+        return NULL;
+    }
+    
+    jintArray arr = env->NewIntArray(width * height);
+    if (!arr) {
+        ALOGE("Thumbnail | Failed to allocate array");
+        sws_freeContext(sws_ctx);
+        return NULL;
+    }
+    
+    jint *pixels = env->GetIntArrayElements(arr, NULL);
+    if (!pixels) {
+        ALOGE("Thumbnail | Failed to get array elements");
+        env->DeleteLocalRef(arr);
+        sws_freeContext(sws_ctx);
+        return NULL;
+    }
+    
+    uint8_t *dst_data[4] = { (uint8_t*)pixels };
+    int dst_linesize[4] = { width * 4 };
+    sws_scale(sws_ctx, frame->data, frame->linesize, 0, frame->height, dst_data, dst_linesize);
+    sws_freeContext(sws_ctx);
+    env->ReleaseIntArrayElements(arr, pixels, 0);
+    
     jobject bitmap_config = env->GetStaticObjectField(
         android_graphics_Bitmap_Config, 
         android_graphics_Bitmap_Config_ARGB_8888
@@ -334,128 +366,61 @@ static jobject frame_to_bitmap(JNIEnv *env, AVFrame *frame, int target_dimension
     
     if (!bitmap_config) {
         ALOGE("Thumbnail | Failed to get bitmap config");
+        env->DeleteLocalRef(arr);
         return NULL;
     }
     
     jobject bitmap = env->CallStaticObjectMethod(
         android_graphics_Bitmap, 
-        android_graphics_Bitmap_createBitmapWH,
-        width, height, bitmap_config
+        android_graphics_Bitmap_createBitmap,
+        arr, width, height, bitmap_config
     );
-    env->DeleteLocalRef(bitmap_config);
-
+    
     if (env->ExceptionCheck()) {
         ALOGE("Thumbnail | Exception creating bitmap");
         env->ExceptionClear();
+        env->DeleteLocalRef(arr);
+        env->DeleteLocalRef(bitmap_config);
         return NULL;
     }
-
-    if (!bitmap) {
-        ALOGE("Thumbnail | Failed to create bitmap");
-        return NULL;
-    }
-
-    AndroidBitmapInfo info{};
-    if (AndroidBitmap_getInfo(env, bitmap, &info) != ANDROID_BITMAP_RESULT_SUCCESS ||
-            info.format != ANDROID_BITMAP_FORMAT_RGBA_8888 ||
-            info.width != (uint32_t)width ||
-            info.height != (uint32_t)height) {
-        ALOGE("Thumbnail | Invalid bitmap backing store");
-        env->DeleteLocalRef(bitmap);
-        return NULL;
-    }
-
-    void *pixels = NULL;
-    if (AndroidBitmap_lockPixels(env, bitmap, &pixels) != ANDROID_BITMAP_RESULT_SUCCESS || !pixels) {
-        ALOGE("Thumbnail | Failed to lock bitmap pixels");
-        env->DeleteLocalRef(bitmap);
-        return NULL;
-    }
-
-    struct SwsContext *sws_ctx = sws_getContext(
-        frame->width, frame->height, (AVPixelFormat)frame->format,
-        width, height, AV_PIX_FMT_RGBA,
-        SWS_FAST_BILINEAR, NULL, NULL, NULL
-    );
-
-    if (!sws_ctx) {
-        ALOGE("Thumbnail | Failed to create scaler");
-        AndroidBitmap_unlockPixels(env, bitmap);
-        env->DeleteLocalRef(bitmap);
-        return NULL;
-    }
-
-    uint8_t *dst_data[4] = { (uint8_t*)pixels };
-    int dst_linesize[4] = { (int)info.stride };
-    int scaled_height = sws_scale(sws_ctx, frame->data, frame->linesize, 0, frame->height, dst_data, dst_linesize);
-    sws_freeContext(sws_ctx);
-    AndroidBitmap_unlockPixels(env, bitmap);
-
-    if (scaled_height <= 0) {
-        ALOGE("Thumbnail | Failed to scale frame");
-        env->DeleteLocalRef(bitmap);
-        return NULL;
-    }
-
+    
+    env->DeleteLocalRef(arr);
+    env->DeleteLocalRef(bitmap_config);
+    
     return bitmap;
 }
 
-static AVFrame *get_scalable_frame(AVFrame *frame) {
-    const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get((AVPixelFormat)frame->format);
-    if (!desc || !(desc->flags & AV_PIX_FMT_FLAG_HWACCEL)) {
-        return frame;
-    }
-
-    AVFrame *sw_frame = av_frame_alloc();
-    if (!sw_frame) {
-        ALOGE("Thumbnail | Failed to allocate software frame");
-        return NULL;
-    }
-
-    if (av_hwframe_transfer_data(sw_frame, frame, 0) < 0) {
-        ALOGW("Thumbnail | Failed to transfer hardware frame");
-        av_frame_free(&sw_frame);
-        return NULL;
-    }
-
-    return sw_frame;
-}
-
-static jobject grab_thumbnail_fast_impl(JNIEnv *env, const char *path, double position, int dimension, bool use_hw_dec) {
+jni_func(jobject, grabThumbnailFast, jstring jpath, jdouble position, jint dimension, jboolean use_hw_dec) {
     auto total_start = std::chrono::high_resolution_clock::now();
+    
+    std::lock_guard<std::mutex> lock(g_thumb_mutex);
     init_methods_cache(env);
-
+    
     // Validate parameters
     if (dimension <= 0 || dimension > 4096) {
         ALOGE("Thumbnail | Invalid dimension");
         return NULL;
     }
     
-    if (!std::isfinite(position) || position < 0.0) {
+    if (position < 0.0) {
         ALOGE("Thumbnail | Invalid position");
         return NULL;
     }
-
-    if (!path || !path[0]) {
+    
+    const char *path = env->GetStringUTFChars(jpath, NULL);
+    if (!path) {
         ALOGE("Thumbnail | Invalid path");
         return NULL;
     }
     
     // Open video file
-    AVDictionary *format_options = NULL;
-    av_dict_set(&format_options, "probesize", "500000", 0);
-    av_dict_set(&format_options, "analyzeduration", "100000", 0);
-    av_dict_set(&format_options, "fpsprobesize", "1", 0);
-    av_dict_set(&format_options, "max_probe_packets", "32", 0);
-
     AVFormatContext *format_ctx = NULL;
-    int open_result = avformat_open_input(&format_ctx, path, NULL, &format_options);
-    av_dict_free(&format_options);
-
-    if (open_result < 0) {
+    if (avformat_open_input(&format_ctx, path, NULL, NULL) < 0) {
         ALOGE("Thumbnail | Failed to open file");
+        env->ReleaseStringUTFChars(jpath, path);
         return NULL;
     }
+    env->ReleaseStringUTFChars(jpath, path);
     
     // Find stream information (ultra-fast minimal analysis)
     format_ctx->max_analyze_duration = 100000;
@@ -540,12 +505,11 @@ static jobject grab_thumbnail_fast_impl(JNIEnv *env, const char *path, double po
     }
     
     // Seek to position (skip if near start)
-    if (position > 1.0 && position < (double)INT64_MAX / AV_TIME_BASE) {
+    if (position > 1.0 && position < INT64_MAX / AV_TIME_BASE) {
         int64_t timestamp = (int64_t)(position * AV_TIME_BASE);
-        AVRational av_time_base_q = {1, AV_TIME_BASE};
-        int64_t stream_timestamp = av_rescale_q(timestamp, av_time_base_q, video_stream->time_base);
-        if (av_seek_frame(format_ctx, video_stream_idx, stream_timestamp, AVSEEK_FLAG_BACKWARD) < 0 &&
-                av_seek_frame(format_ctx, video_stream_idx, stream_timestamp, AVSEEK_FLAG_ANY) < 0) {
+        if (av_seek_frame(format_ctx, video_stream_idx, 
+                          timestamp * video_stream->time_base.den / video_stream->time_base.num / AV_TIME_BASE,
+                          AVSEEK_FLAG_ANY) < 0) {
             ALOGW("Thumbnail | Seek failed, using first frame");
         }
         avcodec_flush_buffers(codec_ctx);
@@ -563,17 +527,15 @@ static jobject grab_thumbnail_fast_impl(JNIEnv *env, const char *path, double po
         return NULL;
     }
     
+    AVFrame *rgb_frame = NULL;
     jobject bitmap = NULL;
     
     bool frame_found = false;
     int frames_decoded = 0;
     int packets_read = 0;
     const int MAX_FRAMES = 100;  // Reduced safety limit for speed (was 300)
-    const int MAX_PACKETS = 512;
     
-    while (av_read_frame(format_ctx, packet) >= 0 &&
-            frames_decoded < MAX_FRAMES &&
-            packets_read < MAX_PACKETS) {
+    while (av_read_frame(format_ctx, packet) >= 0 && frames_decoded < MAX_FRAMES) {
         packets_read++;
         
         if (packet->stream_index == video_stream_idx) {
@@ -584,14 +546,11 @@ static jobject grab_thumbnail_fast_impl(JNIEnv *env, const char *path, double po
                     frames_decoded++;
                     
                     // Calculate frame timestamp
-                    bool has_frame_time = false;
                     double frame_time = 0.0;
-                    if (frame->best_effort_timestamp != AV_NOPTS_VALUE) {
-                        frame_time = frame->best_effort_timestamp * av_q2d(video_stream->time_base);
-                        has_frame_time = true;
-                    } else if (frame->pts != AV_NOPTS_VALUE) {
+                    if (frame->pts != AV_NOPTS_VALUE) {
                         frame_time = frame->pts * av_q2d(video_stream->time_base);
-                        has_frame_time = true;
+                    } else if (frame->best_effort_timestamp != AV_NOPTS_VALUE) {
+                        frame_time = frame->best_effort_timestamp * av_q2d(video_stream->time_base);
                     }
                     
                     // ULTRA FAST: Accept first frame if within reasonable range
@@ -599,28 +558,20 @@ static jobject grab_thumbnail_fast_impl(JNIEnv *env, const char *path, double po
                     const double skip_tolerance = 5.0;   // Skip frames more than 5s before target
                     const double match_tolerance = 5.0;  // Accept frames within 5s of target
                     
-                    if (has_frame_time && position > 0.0 && frame_time < position - skip_tolerance) {
+                    if (position > 0.0 && frame_time < position - skip_tolerance) {
                         av_frame_unref(frame);
                         continue;
                     }
                     
                     // Accept frame if close to target
-                    if (!has_frame_time || position == 0.0 || frame_time >= position - match_tolerance) {
-                        AVFrame *bitmap_frame = get_scalable_frame(frame);
-                        if (bitmap_frame) {
-                            bitmap = frame_to_bitmap(env, bitmap_frame, dimension);
-                            if (bitmap_frame != frame) {
-                                av_frame_free(&bitmap_frame);
-                            }
-                        }
+                    if (position == 0.0 || frame_time >= position - match_tolerance) {
+                        bitmap = frame_to_bitmap(env, frame, dimension);
                         if (bitmap) {
                             frame_found = true;
-                            break;
                         } else {
                             ALOGE("Thumbnail | Failed to convert frame");
-                            av_frame_unref(frame);
-                            continue;
                         }
+                        break;
                     }
                     
                     av_frame_unref(frame);
@@ -651,31 +602,5 @@ static jobject grab_thumbnail_fast_impl(JNIEnv *env, const char *path, double po
     }
     
     ALOGI("Thumbnail | %lldms", (long long)total_duration.count());
-    return bitmap;
-}
-
-jni_func(jobject, grabThumbnailFast, jstring jpath, jdouble position, jint dimension, jboolean use_hw_dec) {
-    init_methods_cache(env);
-
-    if (!jpath) {
-        ALOGE("Thumbnail | Invalid path");
-        return NULL;
-    }
-
-    const char *path_chars = env->GetStringUTFChars(jpath, NULL);
-    if (!path_chars) {
-        ALOGE("Thumbnail | Invalid path");
-        return NULL;
-    }
-
-    std::string path(path_chars);
-    env->ReleaseStringUTFChars(jpath, path_chars);
-
-    jobject bitmap = grab_thumbnail_fast_impl(env, path.c_str(), position, dimension, use_hw_dec == JNI_TRUE);
-    if (!bitmap && use_hw_dec == JNI_TRUE) {
-        ALOGW("Thumbnail | Hardware path failed, retrying with software decode");
-        bitmap = grab_thumbnail_fast_impl(env, path.c_str(), position, dimension, false);
-    }
-
     return bitmap;
 }
