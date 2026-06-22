@@ -19,11 +19,26 @@ v_openssl=3.5.7
 v_mujs=1.3.9
 v_libxml2=2.15.3
 v_fontconfig=2.18.1
+v_libbluray=1.4.1
+v_libiconv=1.19
+v_uchardet=0.0.8
+v_bzip2=1.0.8
+v_xz=5.8.1
+v_zstd=1.5.7
+v_libarchive=3.8.7
+v_libdvdread=7.0.1
+v_libdvdnav=7.0.0
+v_libcurl=8.20.0
+v_rubberband=4.0.0
 
 
 ## Dependency tree
 # I would've used a dict but putting arrays in a dict is not a thing
-
+dep_libiconv=()
+dep_uchardet=(libiconv)
+dep_bzip2=()
+dep_xz=()
+dep_zstd=()
 dep_mbedtls=()
 dep_dav1d=()
 dep_libxml2=()
@@ -39,7 +54,13 @@ dep_mujs=()
 dep_openssl=()
 dep_shaderc=()
 dep_libplacebo=(shaderc)
-dep_mpv=(ffmpeg libass lua libplacebo mujs)
+dep_libbluray=()
+dep_libarchive=(libiconv bzip2 xz zstd)
+dep_libdvdread=()
+dep_libdvdnav=(libdvdread)
+dep_libcurl=(mbedtls)
+dep_rubberband=()
+dep_mpv=(ffmpeg libass lua libplacebo mujs libbluray libiconv uchardet libarchive libdvdnav libcurl rubberband)
 dep_mpv_android=(mpv)
 
 
@@ -47,6 +68,8 @@ dep_mpv_android=(mpv)
 
 # pinned ffmpeg revision
 v_ci_ffmpeg=n8.1.1
+# bump when the prefix build recipe changes without a dependency version change
+v_ci_prefix=6
 
 # filename used to uniquely identify a build prefix
-ci_tarball="prefix-ndk-${v_ndk}-lua-${v_lua}-mujs-${v_mujs}-unibreak-${v_unibreak}-harfbuzz-${v_harfbuzz}-fribidi-${v_fribidi}-freetype-${v_freetype}-libxml2-${v_libxml2}-fontconfig-${v_fontconfig}-mbedtls-${v_mbedtls}-openssl-${v_openssl}-ffmpeg-${v_ci_ffmpeg}.tgz"
+ci_tarball="prefix-ndk-${v_ndk}-lua-${v_lua}-mujs-${v_mujs}-unibreak-${v_unibreak}-harfbuzz-${v_harfbuzz}-fribidi-${v_fribidi}-freetype-${v_freetype}-libxml2-${v_libxml2}-fontconfig-${v_fontconfig}-mbedtls-${v_mbedtls}-libbluray-${v_libbluray}-libiconv-${v_libiconv}-uchardet-${v_uchardet}-bzip2-${v_bzip2}-xz-${v_xz}-zstd-${v_zstd}-libarchive-${v_libarchive}-libdvdread-${v_libdvdread}-libdvdnav-${v_libdvdnav}-libcurl-${v_libcurl}-rubberband-${v_rubberband}-openssl-${v_openssl}-ffmpeg-${v_ci_ffmpeg}.tgz"

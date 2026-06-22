@@ -159,6 +159,11 @@ jobs:
             unzip \
             wget
 
+      - name: Ensure scripts have execute permission
+        run: |
+          chmod -R +x scripts/
+          chmod -R +x buildscripts/
+
       - name: Install Python build dependencies
         run: |
           python3 -m pip install --upgrade pip
