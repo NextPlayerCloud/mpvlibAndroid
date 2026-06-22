@@ -178,10 +178,12 @@ HEREDOC
 [ ! -d libplacebo ] && git clone --recursive https://github.com/haasn/libplacebo
 
 # mpv - use FongMi fork with fongmi branch (supports ISO playback)
-: "${MPV_GIT_URL:=https://github.com/FongMi/mpv}"
-: "${MPV_GIT_REF:=fongmi}"
-if [ ! -d mpv ]; then
-	git clone --depth 1 --branch "$MPV_GIT_REF" "$MPV_GIT_URL" mpv
-fi
+#: "${MPV_GIT_URL:=https://github.com/FongMi/mpv}"
+#: "${MPV_GIT_REF:=fongmi}"
+#if [ ! -d mpv ]; then
+#	git clone --depth 1 --branch "$MPV_GIT_REF" "$MPV_GIT_URL" mpv
+#fi
 
+# mpv
+[ ! -d mpv ] && git clone https://github.com/mpv-player/mpv
 cd ..
