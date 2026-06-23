@@ -79,8 +79,8 @@ elif [ "$1" = "install" ]; then
 
 	msg "Fetching mpv"
 	# Use NextPlayerCloud fork with Neo branch (supports ISO playback)
-	: "${MPV_GIT_URL:=https://github.com/NextPlayerCloud/mpv}"
-	: "${MPV_GIT_REF:=Neo}"
+	: "${MPV_GIT_URL:=https://github.com/FongMi/mpv}"
+	: "${MPV_GIT_REF:=fongmi}"
 	if [ ! -d deps/mpv ]; then
 		echo "--> Cloning mpv from $MPV_GIT_URL [$MPV_GIT_REF]..."
 		git clone --depth 1 --branch "$MPV_GIT_REF" "$MPV_GIT_URL" deps/mpv
