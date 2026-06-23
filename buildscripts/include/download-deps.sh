@@ -178,8 +178,8 @@ HEREDOC
 [ ! -d libplacebo ] && git clone --recursive https://github.com/haasn/libplacebo
 
 # mpv - use NextPlayerCloud fork with Neo branch (supports ISO playback)
-: "${MPV_GIT_URL:=https://github.com/FongMi/mpv}"
-: "${MPV_GIT_REF:=fongmi}"
+: "${MPV_GIT_URL:=https://github.com/NextPlayerCloud/mpv}"
+: "${MPV_GIT_REF:=Neo}"
 if [ ! -d mpv ]; then
   echo "--> Cloning mpv from $MPV_GIT_URL [$MPV_GIT_REF]..."
   git clone --depth 1 --branch "$MPV_GIT_REF" "$MPV_GIT_URL" mpv
