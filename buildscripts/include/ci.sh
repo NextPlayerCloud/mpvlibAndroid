@@ -84,6 +84,7 @@ elif [ "$1" = "install" ]; then
 		git -C deps/mpv fetch --depth 1 origin master
 		git -C deps/mpv reset --hard origin/master
 	fi
+	git -C deps/mpv apply ../../patches/mpv_video_shaders.patch
 
 	msg "Trying to fetch existing prefix"
 	mkdir -p prefix

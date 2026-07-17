@@ -11,13 +11,16 @@ else
 	exit 255
 fi
 
-mkdir -p _build$ndk_suffix
-cd _build$ndk_suffix
-
 if [ -z "$android_abi" ]; then
 	echo "Error: android_abi is not set. buildall.sh must export it." >&2
 	exit 1
 fi
+
+# Work around Mbed-TLS/mbedtls#10668. Remove when upgrading past 3.6.6.
+./scripts/config.py unset MBEDTLS_X509_RSASSA_PSS_SUPPORT
+
+mkdir -p _build$ndk_suffix
+cd _build$ndk_suffix
 
 cmake -G Ninja \
 	-DCMAKE_TOOLCHAIN_FILE="$DIR/sdk/android-ndk-${v_ndk}/build/cmake/android.toolchain.cmake" \
