@@ -25,7 +25,7 @@ This library brings the full power of mpv to Android — play any video, generat
 - **JavaScript** via MuJS 1.3.9
 
 ### 🔒 Security
-- SSL/TLS via both MbedTLS and OpenSSL
+- SSL/TLS via MbedTLS
 - CA certificate bundle included
 - Secure streaming by default
 
@@ -116,19 +116,36 @@ Output: `app/build/outputs/aar/app-release.aar`
 | `Utils` | File helpers, metadata, storage, version info |
 | `MPVNode` | Handle complex mpv data types |
 
+All native dependency versions packaged into the AAR are available through
+`Utils.VERSIONS`. Use the individual fields (for example,
+`Utils.VERSIONS.mpv`, `Utils.VERSIONS.mpvClientApi`,
+`Utils.VERSIONS.ffmpeg`, and `Utils.VERSIONS.libAvcodec`) or iterate over the
+stable display map. Player/release versions are reported separately from
+their library API/ABI versions:
+
+```kotlin
+Utils.VERSIONS.dependencies.forEach { (name, version) ->
+    println("$name: $version")
+}
+```
+
 ## What's Inside
 
 | Component | Version |
 |-----------|---------|
+| mpv | latest |
+| FFmpeg | n8.1.2 |
+| libplacebo | latest |
+| shaderc | Android NDK bundled version |
+| libass | latest |
+| dav1d | latest |
 | Lua | 5.2.4 |
 | MuJS (JavaScript) | 1.3.9 |
 | MbedTLS | 3.6.6 |
-| OpenSSL | 3.5.7 |
-| FFmpeg | n8.1.2 |
 | HarfBuzz | 14.2.1 |
 | FreeType | 2.14.3 |
-| dav1d | latest |
-| libplacebo | latest |
+| FriBidi | 1.0.16 |
+| libunibreak | 7.0 |
 | Android NDK | r29 |
 | Min API | 24 (Android 7.0) |
 

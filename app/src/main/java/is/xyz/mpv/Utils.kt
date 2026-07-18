@@ -290,15 +290,61 @@ object Utils {
 
     data class Versions(
         val mpv: String,
+        val mpvClientApi: String,
         val buildDate: String,
         val libPlacebo: String,
         val ffmpeg: String,
-    )
+        val libAvcodec: String,
+        val libAss: String,
+        val dav1d: String,
+        val mbedTls: String,
+        val lua: String,
+        val muJs: String,
+        val freeType: String,
+        val friBidi: String,
+        val harfBuzz: String,
+        val libUnibreak: String,
+        val shaderc: String,
+        val androidNdk: String,
+    ) {
+        val dependencies: Map<String, String>
+            get() = linkedMapOf(
+                "mpv" to mpv,
+                "libmpv client API" to mpvClientApi,
+                "FFmpeg" to ffmpeg,
+                "libavcodec" to libAvcodec,
+                "libplacebo" to libPlacebo,
+                "libass" to libAss,
+                "dav1d" to dav1d,
+                "MbedTLS" to mbedTls,
+                "Lua" to lua,
+                "MuJS" to muJs,
+                "FreeType" to freeType,
+                "FriBidi" to friBidi,
+                "HarfBuzz" to harfBuzz,
+                "libunibreak" to libUnibreak,
+                "shaderc" to shaderc,
+                "Android NDK" to androidNdk,
+            )
+    }
 
     val VERSIONS = Versions(
         mpv = "%MPV_VERSION%",
+        mpvClientApi = "%MPV_CLIENT_API_VERSION%",
         buildDate = "%DATE%",
         libPlacebo = "%LIBPLACEBO_VERSION%",
         ffmpeg = "%FFMPEG_VERSION%",
+        libAvcodec = "%LIBAVCODEC_VERSION%",
+        libAss = "%LIBASS_VERSION%",
+        dav1d = "%DAV1D_VERSION%",
+        mbedTls = "%MBEDTLS_VERSION%",
+        lua = "%LUA_VERSION%",
+        muJs = "%MUJS_VERSION%",
+        freeType = "%FREETYPE_VERSION%",
+        friBidi = "%FRIBIDI_VERSION%",
+        harfBuzz = "%HARFBUZZ_VERSION%",
+        libUnibreak = "%LIBUNIBREAK_VERSION%",
+        shaderc = "%SHADERC_VERSION%",
+        androidNdk = "%NDK_VERSION%",
     )
 }

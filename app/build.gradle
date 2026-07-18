@@ -36,4 +36,18 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.7.0'
 }
 
+tasks.register('verifyVersionMetadata') {
+    doLast {
+        def versionsFile = file('src/main/java/is/xyz/mpv/Utils.kt')
+        if (versionsFile.text =~ /%[A-Z0-9_]+%/) {
+            throw new GradleException(
+                    'Native dependency versions were not generated. Build through buildscripts/buildall.sh.')
+        }
+    }
+}
+
+tasks.named('preBuild').configure {
+    dependsOn tasks.named('verifyVersionMetadata')
+}
+
 // Maven publishing code removed
