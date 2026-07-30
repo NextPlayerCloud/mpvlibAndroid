@@ -27,9 +27,15 @@ fi
 
 # freetype2
 if [ ! -d freetype2 ]; then
-	mkdir freetype2
-	$WGET https://download.savannah.gnu.org/releases/freetype/freetype-$v_freetype.tar.gz -O - | \
-		tar -xz -C freetype2 --strip-components=1
+    mkdir freetype2
+
+    if ! $WGET https://download.savannah.gnu.org/releases/freetype/freetype-${v_freetype}.tar.gz -O freetype.tar.gz; then
+        echo "Savannah failed, trying GitLab..."
+        $WGET https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-${v_freetype//./-}/freetype-VER-${v_freetype//./-}.tar.gz -O freetype.tar.gz
+    fi
+
+    tar -xzf freetype.tar.gz -C freetype2 --strip-components=1
+    rm freetype.tar.gz
 fi
 
 # fribidi - use vX.Y.Z tag format for releases
