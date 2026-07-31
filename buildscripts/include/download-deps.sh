@@ -190,14 +190,25 @@ HEREDOC
 
 # libplacebo
 if [ ! -d libplacebo ]; then
-	if [ "$IN_CI" -eq 1 ]; then
-		: "${LIBPLACEBO_GIT_COMMIT:?LIBPLACEBO_GIT_COMMIT must be set in CI}"
+	LIBPLACEBO_URL="${LIBPLACEBO_GIT_URL:-https://github.com/FongMi/libplacebo.git}"
+
+	if [ "$IN_CI" -eq 1 ] && [ -n "$LIBPLACEBO_GIT_COMMIT" ]; then
+		echo "Cloning libplacebo at commit: $LIBPLACEBO_GIT_COMMIT"
+
 		clone_ci_commit \
-			"${LIBPLACEBO_GIT_URL:-https://github.com/FongMi/libplacebo.git}" \
-			"$LIBPLACEBO_GIT_COMMIT" libplacebo recursive
+			"$LIBPLACEBO_URL" \
+			"$LIBPLACEBO_GIT_COMMIT" \
+			libplacebo \
+			recursive
+
 	else
-		git clone --recursive --branch "$v_ci_libplacebo" \
-			"${LIBPLACEBO_GIT_URL:-https://github.com/FongMi/libplacebo.git}" libplacebo
+		echo "Cloning libplacebo branch: $v_ci_libplacebo"
+
+		git clone \
+			--recursive \
+			--branch "$v_ci_libplacebo" \
+			"$LIBPLACEBO_URL" \
+			libplacebo
 	fi
 fi
 
