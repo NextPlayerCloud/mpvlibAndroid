@@ -188,15 +188,17 @@ shaderc sources are provided by the NDK
 see <ndk>/sources/third_party/shaderc
 HEREDOC
 
-# libplacebo - use GitHub mirror (haasn/libplacebo)
-[ ! -d libplacebo ] && git clone --recursive https://github.com/haasn/libplacebo
-
-# mpv - use NextPlayerCloud fork with Neo branch (supports ISO playback)
-: "${MPV_GIT_URL:=https://github.com/FongMi/mpv}"
-: "${MPV_GIT_REF:=fongmi}"
-if [ ! -d mpv ]; then
-  echo "--> Cloning mpv from $MPV_GIT_URL [$MPV_GIT_REF]..."
-  git clone --depth 1 --branch "$MPV_GIT_REF" "$MPV_GIT_URL" mpv
+# libplacebo
+if [ ! -d libplacebo ]; then
+	if [ "$IN_CI" -eq 1 ]; then
+		: "${LIBPLACEBO_GIT_COMMIT:?LIBPLACEBO_GIT_COMMIT must be set in CI}"
+		clone_ci_commit \
+			"${LIBPLACEBO_GIT_URL:-https://github.com/FongMi/libplacebo.git}" \
+			"$LIBPLACEBO_GIT_COMMIT" libplacebo recursive
+	else
+		git clone --recursive --branch "$v_ci_libplacebo" \
+			"${LIBPLACEBO_GIT_URL:-https://github.com/FongMi/libplacebo.git}" libplacebo
+	fi
 fi
 
 # mpv
