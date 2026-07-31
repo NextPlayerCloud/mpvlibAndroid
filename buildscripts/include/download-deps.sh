@@ -188,28 +188,20 @@ shaderc sources are provided by the NDK
 see <ndk>/sources/third_party/shaderc
 HEREDOC
 
-# libplacebo
+# libplacebo - use FongMi fork
 if [ ! -d libplacebo ]; then
-	LIBPLACEBO_URL="${LIBPLACEBO_GIT_URL:-https://github.com/FongMi/libplacebo.git}"
+	git clone --recursive \
+		--branch fongmi \
+		https://github.com/FongMi/libplacebo.git \
+		libplacebo
+fi
 
-	if [ "$IN_CI" -eq 1 ] && [ -n "$LIBPLACEBO_GIT_COMMIT" ]; then
-		echo "Cloning libplacebo at commit: $LIBPLACEBO_GIT_COMMIT"
-
-		clone_ci_commit \
-			"$LIBPLACEBO_URL" \
-			"$LIBPLACEBO_GIT_COMMIT" \
-			libplacebo \
-			recursive
-
-	else
-		echo "Cloning libplacebo branch: $v_ci_libplacebo"
-
-		git clone \
-			--recursive \
-			--branch "$v_ci_libplacebo" \
-			"$LIBPLACEBO_URL" \
-			libplacebo
-	fi
+# mpv - use NextPlayerCloud fork with Neo branch (supports ISO playback)
+: "${MPV_GIT_URL:=https://github.com/FongMi/mpv}"
+: "${MPV_GIT_REF:=fongmi}"
+if [ ! -d mpv ]; then
+  echo "--> Cloning mpv from $MPV_GIT_URL [$MPV_GIT_REF]..."
+  git clone --depth 1 --branch "$MPV_GIT_REF" "$MPV_GIT_URL" mpv
 fi
 
 # mpv
