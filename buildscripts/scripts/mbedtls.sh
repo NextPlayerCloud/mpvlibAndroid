@@ -21,3 +21,19 @@ fi
 
 make -j$cores no_test
 make DESTDIR="$prefix_dir" install
+
+# The Makefile install does not provide pkg-config metadata, but the AAR
+# version manifest reads installed artifacts for every packaged ABI.
+mkdir -p "$prefix_dir/lib/pkgconfig"
+cat >"$prefix_dir/lib/pkgconfig/mbedtls.pc" <<MBEDTLSPC
+prefix=/usr/local
+exec_prefix=\${prefix}
+libdir=\${prefix}/lib
+includedir=\${prefix}/include
+
+Name: Mbed TLS
+Description: Lightweight cryptographic and SSL/TLS library
+Version: ${v_mbedtls}
+Libs: -L\${libdir} -lmbedtls -lmbedx509 -lmbedcrypto
+Cflags: -I\${includedir}
+MBEDTLSPC
