@@ -22,6 +22,11 @@ jobs:
       contents: read
 
     env:
+      MPV_GIT_URL: https://github.com/FongMi/mpv
+      MPV_GIT_REF: fongmi
+      FFMPEG_GIT_URL: https://github.com/FongMi/FFmpeg.git
+      LIBPLACEBO_GIT_URL: https://github.com/FongMi/libplacebo.git
+
       CACHE_MODE: folder
       CACHE_FOLDER: ${{ github.workspace }}/gh-cache
 
@@ -186,11 +191,11 @@ jobs:
             exit 1
           fi
 
-          cp "$AAR_PATH" "dist/mpvlib-${VERSION_NAME}.aar"
+          cp "$AAR_PATH" "dist/mpvlib-fongmi-${VERSION_NAME}.aar"
 
       - name: Upload AAR artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mpvlib-${{ env.VERSION_NAME }}
-          path: dist/mpvlib-${{ env.VERSION_NAME }}.aar
+          name: mpvlib-fongmi-${{ env.VERSION_NAME }}
+          path: dist/mpvlib-fongmi-${{ env.VERSION_NAME }}.aar
           if-no-files-found: error

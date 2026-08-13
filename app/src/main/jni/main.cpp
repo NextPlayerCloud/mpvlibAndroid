@@ -95,7 +95,7 @@ jni_func(void, destroyNative) {
     mpv_wakeup(g_mpv);
     pthread_join(event_thread_id, NULL);
 
-    release_surface(env);
+    release_surfaces(env);
     mpv_terminate_destroy(g_mpv);
     g_mpv = NULL;
 }

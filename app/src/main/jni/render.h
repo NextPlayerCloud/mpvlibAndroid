@@ -2,4 +2,4 @@
 
 #include <jni.h>
 
-void release_surface(JNIEnv *env);
+void release_surfaces(JNIEnv *env);

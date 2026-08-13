@@ -25,7 +25,11 @@ object MPVLib {
     external fun init()
     private external fun destroyNative()
     external fun attachSurface(surface: Surface)
+    external fun replaceSurface(surface: Surface)
     external fun detachSurface()
+    external fun attachOsdSurface(surface: Surface)
+    external fun replaceOsdSurface(surface: Surface)
+    external fun detachOsdSurface()
 
     fun destroy() {
         try {

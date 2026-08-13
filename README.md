@@ -1,5 +1,10 @@
 # mpvlib Android
 
+> The `mpv-fongmi` branch keeps this library's API and AAR packaging while
+> using FongMi's mpv, FFmpeg, libplacebo, and extended native dependency profile.
+> It also exposes video-surface replacement and secondary OSD-surface methods
+> needed by FongMi's Android direct-output and Vulkan paths.
+
 **MpvRx / mpvlibAndroid** — An Android video player library built on mpv.
 
 ## What is This?
@@ -133,15 +138,16 @@ Utils.VERSIONS.dependencies.forEach { (name, version) ->
 
 | Component | Version |
 |-----------|---------|
-| mpv | latest |
-| FFmpeg | n8.1.2 |
-| libplacebo | latest |
+| mpv | FongMi `fongmi` branch |
+| FFmpeg | FongMi `release-9.0-fongmi` branch |
+| libplacebo | FongMi `fongmi` branch |
 | shaderc | Android NDK bundled version |
 | libass | latest |
 | dav1d | latest |
 | Lua | 5.2.4 |
 | MuJS (JavaScript) | 1.3.9 |
-| MbedTLS | 3.6.6 |
+| MbedTLS | 3.6.7 |
+| FongMi extensions | libaribcaption, curl, libbluray, iconv, uchardet, libarchive, dvdnav, rubberband |
 | HarfBuzz | 14.2.1 |
 | FreeType | 2.14.3 |
 | FriBidi | 1.0.16 |
@@ -156,4 +162,5 @@ Utils.VERSIONS.dependencies.forEach { (name, version) ->
 ## Credits
 
 - [mpv](https://mpv.io/)
+- [FongMi/mpv-android](https://github.com/FongMi/mpv-android) for the Android native profile and fork integrations
 - Original authors: Ilya Zhuravlev and sfan5

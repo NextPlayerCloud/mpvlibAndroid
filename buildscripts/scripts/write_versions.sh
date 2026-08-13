@@ -89,7 +89,7 @@ LIBASS_VERSION=$(pc_version libass)
 DAV1D_VERSION=$(pc_version dav1d)
 
 # Keep FFmpeg's release version separate from libavcodec's ABI version.
-FFMPEG_VERSION=${v_ci_ffmpeg#n}
+FFMPEG_VERSION=${v_ci_ffmpeg#release-}
 LIBAVCODEC_VERSION=$(pc_version libavcodec)
 
 # Read pinned dependencies from installed artifacts as well, preventing retained
@@ -103,7 +103,7 @@ HARFBUZZ_VERSION=$(pc_version harfbuzz)
 LIBUNIBREAK_VERSION=$(pc_version libunibreak)
 # shaderc is supplied by the selected NDK, whose pkg-config version is a
 # hard-coded pseudo-version. Report its actual provenance instead.
-pc_version shaderc_combined >/dev/null
+pc_version shaderc >/dev/null
 SHADERC_VERSION="bundled-with-$v_ndk"
 NDK_VERSION=$v_ndk
 
