@@ -69,7 +69,7 @@ dep_mpv_android=(mpv)
 ## for CI workflow
 
 # pinned ffmpeg revision
-v_ci_ffmpeg=release-8.1-fongmi
+v_ci_ffmpeg=release-9.0-fongmi
 # bump when the prefix build recipe changes without a dependency version change
 v_ci_prefix=6
 
