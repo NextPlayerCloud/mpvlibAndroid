@@ -191,11 +191,11 @@ jobs:
             exit 1
           fi
 
-          cp "$AAR_PATH" "dist/mpvlib-fongmi-${VERSION_NAME}.aar"
+          cp "$AAR_PATH" "dist/mpvlib-fongmi.aar"
 
       - name: Upload AAR artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mpvlib-fongmi-${{ env.VERSION_NAME }}
-          path: dist/mpvlib-fongmi-${{ env.VERSION_NAME }}.aar
+          name: mpvlib-fongmi
+          path: dist/mpvlib-fongmi.aar
           if-no-files-found: error
