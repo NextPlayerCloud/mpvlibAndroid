@@ -35,6 +35,10 @@ else
 	exit 255
 fi
 
+if ! git apply --reverse --check ../../patches/mpv_video_shaders.patch 2>/dev/null; then
+	git apply ../../patches/mpv_video_shaders.patch
+fi
+
 unset CC CXX # meson wants these unset
 
 check_iconv_files
