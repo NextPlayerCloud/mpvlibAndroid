@@ -21,12 +21,19 @@ void init_methods_cache(JNIEnv *env)
 {
     static std::mutex init_mutex;
     static bool methods_initialized = false;
-    std::lock_guard<std::mutex> lock(init_mutex);
-    
+
+    // Fast path: already initialized
     if (methods_initialized)
         return;
 
-    #define FIND_CLASS(name) reinterpret_cast<jclass>(env->NewGlobalRef(env->FindClass(name)))
+    // Slow path: need to initialize (thread-safe)
+    std::lock_guard<std::mutex> lock(init_mutex);
+
+    // Double-check after acquiring lock
+    if (methods_initialized)
+        return;
+
+#define FIND_CLASS(name) reinterpret_cast<jclass>(env->NewGlobalRef(env->FindClass(name)))
     java_Integer = FIND_CLASS("java/lang/Integer");
     java_Integer_init = env->GetMethodID(java_Integer, "<init>", "(I)V");
     java_Double = FIND_CLASS("java/lang/Double");
@@ -37,8 +44,6 @@ void init_methods_cache(JNIEnv *env)
     android_graphics_Bitmap = FIND_CLASS("android/graphics/Bitmap");
     // createBitmap(int[], int, int, android.graphics.Bitmap$Config)
     android_graphics_Bitmap_createBitmap = env->GetStaticMethodID(android_graphics_Bitmap, "createBitmap", "([IIILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
-    // createBitmap(int, int, android.graphics.Bitmap$Config)
-    android_graphics_Bitmap_createBitmapWH = env->GetStaticMethodID(android_graphics_Bitmap, "createBitmap", "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
     android_graphics_Bitmap_Config = FIND_CLASS("android/graphics/Bitmap$Config");
     // static final android.graphics.Bitmap$Config ARGB_8888
     android_graphics_Bitmap_Config_ARGB_8888 = env->GetStaticFieldID(android_graphics_Bitmap_Config, "ARGB_8888", "Landroid/graphics/Bitmap$Config;");
@@ -85,7 +90,7 @@ void init_methods_cache(JNIEnv *env)
     java_util_HashMap_init = env->GetMethodID(java_util_HashMap, "<init>", "()V");
     java_util_HashMap_put = env->GetMethodID(java_util_HashMap, "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;");
 
-    #undef FIND_CLASS
+#undef FIND_CLASS
 
     methods_initialized = true;
 }
