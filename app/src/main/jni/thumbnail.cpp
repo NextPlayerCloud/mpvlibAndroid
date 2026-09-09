@@ -326,10 +326,10 @@ static jobject frame_to_bitmap(JNIEnv *env, AVFrame *frame, int target_dimension
     int sws_algorithm = SWS_FAST_BILINEAR;
 
     // Create SwsContext for scaling and format conversion
-    // Android Bitmap.Config.ARGB_8888 expects BGRA byte order (little-endian)
+    // Android Bitmap.Config.RGB_565 expects RGB565LE
     struct SwsContext *sws_ctx = sws_getContext(
             frame->width, frame->height, (AVPixelFormat)frame->format,
-            width, height, AV_PIX_FMT_BGRA,
+            width, height, AV_PIX_FMT_RGB565LE,
             sws_algorithm, NULL, NULL, NULL
     );
 
@@ -338,54 +338,35 @@ static jobject frame_to_bitmap(JNIEnv *env, AVFrame *frame, int target_dimension
         return NULL;
     }
 
-    jintArray arr = env->NewIntArray(width * height);
-    if (!arr) {
-        ALOGE("Thumbnail | Failed to allocate array");
-        sws_freeContext(sws_ctx);
-        return NULL;
-    }
+    jclass bitmap_cls = env->FindClass("android/graphics/Bitmap");
+    jmethodID create_bitmap_mid = env->GetStaticMethodID(bitmap_cls, "createBitmap", "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
+    jfieldID rgb565_fid = env->GetStaticFieldID(android_graphics_Bitmap_Config, "RGB_565", "Landroid/graphics/Bitmap$Config;");
 
-    jint *pixels = env->GetIntArrayElements(arr, NULL);
-    if (!pixels) {
-        ALOGE("Thumbnail | Failed to get array elements");
-        env->DeleteLocalRef(arr);
-        sws_freeContext(sws_ctx);
-        return NULL;
-    }
+    jobject bitmap_config = env->GetStaticObjectField(android_graphics_Bitmap_Config, rgb565_fid);
+    jobject bitmap = env->CallStaticObjectMethod(bitmap_cls, create_bitmap_mid, width, height, bitmap_config);
+    env->DeleteLocalRef(bitmap_config);
+    env->DeleteLocalRef(bitmap_cls);
 
-    uint8_t *dst_data[4] = { (uint8_t*)pixels };
-    int dst_linesize[4] = { width * 4 };
-    sws_scale(sws_ctx, frame->data, frame->linesize, 0, frame->height, dst_data, dst_linesize);
-    sws_freeContext(sws_ctx);
-    env->ReleaseIntArrayElements(arr, pixels, 0);
-
-    jobject bitmap_config = env->GetStaticObjectField(
-            android_graphics_Bitmap_Config,
-            android_graphics_Bitmap_Config_ARGB_8888
-    );
-
-    if (!bitmap_config) {
-        ALOGE("Thumbnail | Failed to get bitmap config");
-        env->DeleteLocalRef(arr);
-        return NULL;
-    }
-
-    jobject bitmap = env->CallStaticObjectMethod(
-            android_graphics_Bitmap,
-            android_graphics_Bitmap_createBitmap,
-            arr, width, height, bitmap_config
-    );
-
-    if (env->ExceptionCheck()) {
+    if (env->ExceptionCheck() || !bitmap) {
         ALOGE("Thumbnail | Exception creating bitmap");
         env->ExceptionClear();
-        env->DeleteLocalRef(arr);
-        env->DeleteLocalRef(bitmap_config);
+        sws_freeContext(sws_ctx);
         return NULL;
     }
 
-    env->DeleteLocalRef(arr);
-    env->DeleteLocalRef(bitmap_config);
+    void* bitmap_pixels = nullptr;
+    if (AndroidBitmap_lockPixels(env, bitmap, &bitmap_pixels) < 0) {
+        ALOGE("Thumbnail | Failed to lock bitmap pixels");
+        sws_freeContext(sws_ctx);
+        return NULL;
+    }
+
+    uint8_t *dst_data[4] = { (uint8_t*)bitmap_pixels };
+    int dst_linesize[4] = { width * 2 };
+    sws_scale(sws_ctx, frame->data, frame->linesize, 0, frame->height, dst_data, dst_linesize);
+    sws_freeContext(sws_ctx);
+
+    AndroidBitmap_unlockPixels(env, bitmap);
 
     return bitmap;
 }
@@ -393,7 +374,8 @@ static jobject frame_to_bitmap(JNIEnv *env, AVFrame *frame, int target_dimension
 jni_func(jobject, grabThumbnailFast, jstring jpath, jdouble position, jint dimension, jboolean use_hw_dec) {
 auto total_start = std::chrono::high_resolution_clock::now();
 
-std::lock_guard<std::mutex> lock(g_thumb_mutex);
+// 移除全局锁以支持并发截图
+// std::lock_guard<std::mutex> lock(g_thumb_mutex);
 init_methods_cache(env);
 
 // Validate parameters
@@ -415,11 +397,17 @@ return NULL;
 
 // Open video file
 AVFormatContext *format_ctx = NULL;
-if (avformat_open_input(&format_ctx, path, NULL, NULL) < 0) {
+AVDictionary *options = NULL;
+av_dict_set(&options, "timeout", "5000000", 0); // 5 seconds socket timeout
+av_dict_set(&options, "rw_timeout", "5000000", 0); // 5 seconds IO timeout
+
+if (avformat_open_input(&format_ctx, path, NULL, &options) < 0) {
 ALOGE("Thumbnail | Failed to open file");
+av_dict_free(&options);
 env->ReleaseStringUTFChars(jpath, path);
 return NULL;
 }
+av_dict_free(&options);
 env->ReleaseStringUTFChars(jpath, path);
 
 // Find stream information (ultra-fast minimal analysis)

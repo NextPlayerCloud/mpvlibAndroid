@@ -3,6 +3,8 @@ package `is`.xyz.mpv
 import android.content.Context
 import android.graphics.Bitmap
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -72,7 +74,7 @@ object FastThumbnails {
         return try {
             MPVLib.grabThumbnailFast(path, position, dimension, useHwDec)
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("FastThumbnails", "Failed to generate thumbnail for $path at $position", e)
             null
         }
     }
@@ -133,8 +135,8 @@ object FastThumbnails {
         useHwDec: Boolean = true
     ): List<Bitmap?> = withContext(Dispatchers.IO) {
         positions.map { position ->
-            generate(path, position, dimension, useHwDec)
-        }
+            async { generate(path, position, dimension, useHwDec) }
+        }.awaitAll()
     }
 
     /**
