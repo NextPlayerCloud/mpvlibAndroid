@@ -258,7 +258,7 @@ if [ ! -d curl ]; then
 fi
 
 # mpv
-: "${MPV_GIT_URL:=https://github.com/FongMi/mpv}"
+: "${MPV_GIT_URL:=https://github.com/NextPlayerCloud/mpv}"
 : "${MPV_GIT_REF:=fongmi}"
 if [ ! -d mpv ]; then
 	if [ -n "$MPV_GIT_REF" ]; then
