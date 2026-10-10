@@ -113,6 +113,13 @@ if [ ! -d libxml2 ]; then
 		tar -xz -C libxml2 --strip-components=1
 fi
 
+# fontconfig
+if [ ! -d fontconfig ]; then
+	mkdir fontconfig
+	$WGET https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/${v_fontconfig}/fontconfig-${v_fontconfig}.tar.gz -O - | \
+		tar -xz -C fontconfig --strip-components=1
+fi
+
 # libmysofa
 if [ ! -d libmysofa ]; then
 	mkdir libmysofa

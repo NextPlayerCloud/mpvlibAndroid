@@ -23,29 +23,78 @@ import kotlin.math.abs
 object Utils {
     fun copyAssets(context: Context) {
         val assetManager = context.assets
-        val files = arrayOf("subfont.ttf", "cacert.pem")
+        val files = arrayOf("cacert.pem")
         val configDir = context.filesDir.path
-        for (filename in files) {
-            var ins: InputStream? = null
-            var out: OutputStream? = null
-            try {
-                ins = assetManager.open(filename, AssetManager.ACCESS_STREAMING)
-                val outFile = File("$configDir/$filename")
-                // Note that .available() officially returns an *estimated* number of bytes available
-                // this is only true for generic streams, asset streams return the full file size
-                if (outFile.length() == ins.available().toLong()) {
-                    Log.v(TAG, "Skipping copy of asset file (exists same size): $filename")
-                    continue
-                }
-                out = FileOutputStream(outFile)
-                ins.copyTo(out)
-                Log.w(TAG, "Copied asset file: $filename")
-            } catch (e: IOException) {
-                Log.e(TAG, "Failed to copy asset file: $filename", e)
-            } finally {
-                ins?.close()
-                out?.close()
+
+        for (name in files) {
+            copyAssetFile(assetManager, name, File("$configDir/$name"))
+        }
+
+        // we used to ship this, but it's no longer needed
+        File("$configDir/subfont.ttf").delete()
+
+        writeFontsConf(context, File("$configDir/fonts.conf"))
+    }
+
+    private fun copyAssetFile(assetManager: AssetManager, name: String, outFile: File) {
+        var ins: InputStream? = null
+        var out: OutputStream? = null
+        try {
+            ins = assetManager.open(name, AssetManager.ACCESS_STREAMING)
+            // Note that .available() officially returns an *estimated* number of bytes available
+            // this is only true for generic streams, asset streams return the full file size
+            if (outFile.length() == ins.available().toLong()) {
+                Log.v(TAG, "Skipping copy of asset file (exists same size): $name")
+                return
             }
+            out = FileOutputStream(outFile)
+            ins.copyTo(out)
+            Log.w(TAG, "Copied asset file: $name")
+        } catch (e: IOException) {
+            Log.e(TAG, "Failed to copy asset file: $name", e)
+        } finally {
+            ins?.close()
+            out?.close()
+        }
+    }
+
+    /** Write the 'fonts.conf' for fontconfig. */
+    //
+    // mpvEx 备注：libass 启用 fontconfig 后，mpv 会把 <config-dir>/fonts.conf 交给
+    // ass_set_fonts()（mpv/sub/ass_mp.c: mp_find_config_file(tmp, global, "fonts.conf")）。
+    // 不写这个文件，libass 会退回 FcInitLoadConfig() 的内置配置，其字体目录指向
+    // /usr/share/fonts（Android 上为空），所有字形请求落到内置兜底字体 subfont.ttf；
+    // 该字体不含韩文音节（U+AC00–D7A3），HarfBuzz 只能把音节拆成 Jamo 逐个渲染。
+    private fun writeFontsConf(context: Context, configFile: File) {
+        val parts = mutableListOf(
+            "<fontconfig>",
+            // Android system fonts reside here
+            "<dir>/system/fonts/</dir>",
+            "<dir>/product/fonts/</dir>",
+            "<dir>/system_ext/fonts/</dir>", // Android 11+
+            // Point fontconfig to the right cache path so that caching works
+            "<cachedir>${context.cacheDir.path}</cachedir>",
+            // Conveniently there is *no* Java API to query the system default fonts, but we can
+            // manually specify the font families we know Android uses and provides by default.
+            // (compare to 60-latin.conf shipped with fontconfig)
+            "<alias><family>serif</family>",
+            "<prefer><family>Noto Serif</family></prefer>",
+            "</alias>",
+            "<alias><family>sans-serif</family>",
+            "<prefer>",
+            "<family>Roboto</family>",
+            "<family>Noto Sans</family>", // other languages
+            "</prefer>",
+            "</alias>",
+            "<alias><family>monospace</family>",
+            "<prefer><family>Droid Sans Mono</family></prefer>",
+            "</alias>",
+            "</fontconfig>",
+        )
+        try {
+            configFile.writeText(parts.joinToString("\n"))
+        } catch (e: IOException) {
+            Log.w(TAG, "Failed to write fonts.conf", e)
         }
     }
 
