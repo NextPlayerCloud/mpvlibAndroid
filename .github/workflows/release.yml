@@ -1,10 +1,9 @@
 name: release
 
 on:
-  push:
-    tags:
-      - "v*.*.*"
-
+  # Tag-triggered releases are handled by release-fongmi.yml, which publishes
+  # the single mpvlib-fongmi variant. This workflow is kept for the original
+  # three-variant release and is manual-only.
   workflow_dispatch:
     inputs:
       release_tag:
