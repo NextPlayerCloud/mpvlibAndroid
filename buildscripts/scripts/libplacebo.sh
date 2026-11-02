@@ -13,6 +13,10 @@ else
 	exit 255
 fi
 
+if ! git apply --reverse --check ../../patches/libplacebo_gles_compute.patch 2>/dev/null; then
+	git apply ../../patches/libplacebo_gles_compute.patch
+fi
+
 unset CC CXX
 if [ ! -f "$prefix_dir/lib/libshaderc.a" ]; then
 	echo "shaderc dependency is missing: $prefix_dir/lib/libshaderc.a" >&2
