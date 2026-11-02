@@ -50,7 +50,19 @@ if [ ! -f "$av3a_source/CMakeLists.txt" ]; then
 	echo "FFmpeg source does not contain dependency/avs3a. Update the pinned FFmpeg branch." >&2
 	exit 1
 fi
-android_cmake_setup "$av3a_source" "$av3a_build" -DBUILD_SHARED_LIBS=OFF
+# CMake FetchContent clones Eigen from gitlab.com, which intermittently rejects requests under load.
+for attempt in 1 2 3 4 5; do
+	if android_cmake_setup "$av3a_source" "$av3a_build" -DBUILD_SHARED_LIBS=OFF; then
+		break
+	fi
+	if [ "$attempt" -eq 5 ]; then
+		echo "AV3A dependency configure failed after $attempt attempts." >&2
+		exit 1
+	fi
+	echo "AV3A dependency configure failed (attempt $attempt); retrying in $((attempt * 30))s." >&2
+	rm -rf "$av3a_build/_deps"
+	sleep $((attempt * 30))
+done
 android_cmake_build "$av3a_build"
 android_cmake_install "$av3a_build"
 
@@ -58,11 +70,12 @@ args=(
 	--target-os=android --enable-cross-compile
 	--cross-prefix=$ndk_triple- --cc=$CC --pkg-config=pkg-config --nm=llvm-nm
 	--pkg-config-flags=--static
+	--ar=$AR --ranlib=$RANLIB
 	--arch=${ndk_triple%%-*} --cpu=$cpu
 	--extra-cflags="-I$prefix_dir/include $cpuflags" --extra-ldflags="-L$prefix_dir/lib"
 
 	--enable-{jni,mediacodec,mbedtls,libdav1d,libxml2,libmysofa,libaribcaption,libarcdav3a,libuavs3d} --disable-vulkan
-	--disable-static --enable-shared --enable-{gpl,version3}
+	--enable-{static,shared,pic,gpl,version3}
 
 	# disable unneeded parts
 	--disable-{stripping,doc,programs}
@@ -81,3 +94,11 @@ args=(
 
 make -j$cores
 make DESTDIR="$prefix_dir" install
+
+# Keep the individual shared builds as the exact public symbol/version reference.
+# Only the aggregate library is installed for mpv and the Media3 consumers.
+pkg-config --libs --static libavdevice libavfilter libavformat libavcodec \
+	libswresample libswscale libavutil > ffmpeg-shared.libs
+python3 ../../../include/ffmpeg-shared.py link --build-dir "$PWD" \
+	--prefix "$prefix_dir" --cxx "$CXX" --ldflags="$LDFLAGS" \
+	--libs-file ffmpeg-shared.libs
