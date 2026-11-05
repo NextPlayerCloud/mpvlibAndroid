@@ -27,7 +27,7 @@ This library brings the full power of mpv to Android — play any video, generat
 - ~50-100ms per thumbnail
 
 ### 📜 Scripting
-- **Lua** 5.2.4 — mpv scripts work as-is
+- **LuaJIT** 2.1 — mpv Lua scripts work as-is
 - **JavaScript** via MuJS 1.3.9
 
 ### 🔒 Security
@@ -140,22 +140,22 @@ Utils.VERSIONS.dependencies.forEach { (name, version) ->
 | Component | Version |
 |-----------|---------|
 | mpv | FongMi `fongmi` branch |
-| FFmpeg | FongMi `release-9.0-fongmi` branch |
+| FFmpeg | FongMi `release-9.1-fongmi` branch |
 | libplacebo | FongMi `fongmi` branch |
 | shaderc | Android NDK bundled version |
 | libass | latest |
 | dav1d | latest |
 | uavs3d | `e72f7c34be2f4de725c1ae498e8c4f3559e99b5b` |
 | libmysofa | 1.3.5 |
-| LittleCMS2 | 2.19.1 |
-| Lua | 5.2.4 |
+| LittleCMS2 | 2.20 |
+| LuaJIT | 2.1 |
 | MuJS (JavaScript) | 1.3.11 |
 | MbedTLS | 3.6.7 |
 | FongMi extensions | libaribcaption, fontconfig, curl, libbluray, iconv, uchardet, libarchive, dvdnav, rubberband |
 | FFmpeg packaging | single `libffmpeg.so` shared core |
-| HarfBuzz | 15.0.0 |
+| HarfBuzz | 15.1.0 |
 | FreeType | 2.15.0 |
-| FriBidi | 1.0.17 |
+| FriBidi | 1.0.18 |
 | libunibreak | 8.0 |
 | Android NDK | r30 |
 | Min API | 24 (Android 7.0) |
