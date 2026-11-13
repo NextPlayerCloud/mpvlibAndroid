@@ -58,53 +58,18 @@ object Utils {
         }
     }
 
-    /** Write the 'fonts.conf' for fontconfig. */
-    //
-    // mpvEx 备注：libass 启用 fontconfig 后，mpv 会把 <config-dir>/fonts.conf 交给
-    // ass_set_fonts()（mpv/sub/ass_mp.c: mp_find_config_file(tmp, global, "fonts.conf")）。
-    // 不写这个文件，libass 会退回 FcInitLoadConfig() 的内置配置，其字体目录指向
-    // /usr/share/fonts（Android 上为空），所有字形请求落到内置兜底字体 subfont.ttf；
-    // 该字体不含韩文音节（U+AC00–D7A3），HarfBuzz 只能把音节拆成 Jamo 逐个渲染。
-    private fun writeFontsConf(context: Context, configFile: File) {
-        val parts = mutableListOf(
-            "<fontconfig>",
-            // Android system fonts reside here
-            "<dir>/system/fonts/</dir>",
-            "<dir>/product/fonts/</dir>",
-            "<dir>/system_ext/fonts/</dir>", // Android 11+
-            // Point fontconfig to the right cache path so that caching works
-            "<cachedir>${context.cacheDir.path}</cachedir>",
-            // Conveniently there is *no* Java API to query the system default fonts, but we can
-            // manually specify the font families we know Android uses and provides by default.
-            // (compare to 60-latin.conf shipped with fontconfig)
-            "<alias><family>serif</family>",
-            "<prefer><family>Noto Serif</family></prefer>",
-            "</alias>",
-            "<alias><family>sans-serif</family>",
-            "<prefer>",
-            "<family>Roboto</family>",
-            "<family>Noto Sans</family>", // other languages
-            "</prefer>",
-            "</alias>",
-            "<alias><family>monospace</family>",
-            "<prefer><family>Droid Sans Mono</family></prefer>",
-            "</alias>",
-            "</fontconfig>",
-        )
-        try {
-            configFile.writeText(parts.joinToString("\n"))
-        } catch (e: IOException) {
-            Log.w(TAG, "Failed to write fonts.conf", e)
-        }
-        writeFontsConf(context, File("$configDir/fonts.conf"))
-    }
-
     private const val FONTS_CONF_MARKER = "<!-- Written by mpvlib. Remove this line to keep your own changes. -->"
 
     /**
      * Points fontconfig at the Android system fonts with a writable cache, so subtitle tracks
      * load the cache instead of scanning every font. A fonts.conf without the marker line
      * belongs to the user and is left alone.
+     *
+     * mpvEx 备注：libass 启用 fontconfig 后，mpv 会把 <config-dir>/fonts.conf 交给
+     * ass_set_fonts()（mpv/sub/ass_mp.c: mp_find_config_file(tmp, global, "fonts.conf")）。
+     * 不写这个文件，libass 会退回 FcInitLoadConfig() 的内置配置，其字体目录指向
+     * /usr/share/fonts（Android 上为空），所有字形请求落到内置兜底字体 subfont.ttf；
+     * 该字体不含韩文音节（U+AC00–D7A3），HarfBuzz 只能把音节拆成 Jamo 逐个渲染。
      */
     private fun writeFontsConf(context: Context, configFile: File) {
         val cacheDir = File(context.cacheDir, "fontconfig")
@@ -113,6 +78,7 @@ object Utils {
             "<fontconfig>",
             "<dir>/system/fonts/</dir>",
             "<dir>/product/fonts/</dir>",
+            "<dir>/system_ext/fonts/</dir>", // Android 11+
             "<cachedir>${cacheDir.path}</cachedir>",
             // Android has no API for its generic families, so name the stock ones.
             "<alias><family>serif</family><prefer><family>Noto Serif</family></prefer></alias>",
