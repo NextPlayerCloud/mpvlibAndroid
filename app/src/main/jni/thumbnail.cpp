@@ -422,6 +422,15 @@ static AVFrame *get_scalable_frame(AVFrame *frame) {
     return sw_frame;
 }
 
+struct ThumbnailInterruptContext {
+    std::chrono::steady_clock::time_point deadline;
+};
+
+static int thumbnail_interrupt_cb(void *opaque) {
+    auto *ctx = static_cast<ThumbnailInterruptContext *>(opaque);
+    return (ctx && std::chrono::steady_clock::now() > ctx->deadline) ? 1 : 0;
+}
+
 static jobject grab_thumbnail_fast_impl(JNIEnv *env, const char *path, double position, int dimension, bool use_hw_dec, bool *used_hw_dec) {
     auto total_start = std::chrono::high_resolution_clock::now();
     init_methods_cache(env);
@@ -448,8 +457,20 @@ static jobject grab_thumbnail_fast_impl(JNIEnv *env, const char *path, double po
     av_dict_set(&format_options, "analyzeduration", "100000", 0);
     av_dict_set(&format_options, "fpsprobesize", "1", 0);
     av_dict_set(&format_options, "max_probe_packets", "32", 0);
+    av_dict_set(&format_options, "rw_timeout", "5000000", 0);
 
-    AVFormatContext *format_ctx = NULL;
+    AVFormatContext *format_ctx = avformat_alloc_context();
+    if (!format_ctx) {
+        av_dict_free(&format_options);
+        ALOGE("Thumbnail | Failed to allocate format context");
+        return NULL;
+    }
+    ThumbnailInterruptContext interrupt_ctx{
+        std::chrono::steady_clock::now() + std::chrono::seconds(8)
+    };
+    format_ctx->interrupt_callback.callback = thumbnail_interrupt_cb;
+    format_ctx->interrupt_callback.opaque = &interrupt_ctx;
+
     int open_result = avformat_open_input(&format_ctx, path, NULL, &format_options);
     av_dict_free(&format_options);
 
