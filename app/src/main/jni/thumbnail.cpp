@@ -422,7 +422,7 @@ static AVFrame *get_scalable_frame(AVFrame *frame) {
     return sw_frame;
 }
 
-static jobject grab_thumbnail_fast_impl(JNIEnv *env, const char *path, double position, int dimension, bool use_hw_dec) {
+static jobject grab_thumbnail_fast_impl(JNIEnv *env, const char *path, double position, int dimension, bool use_hw_dec, bool *used_hw_dec) {
     auto total_start = std::chrono::high_resolution_clock::now();
     init_methods_cache(env);
 
@@ -530,6 +530,9 @@ static jobject grab_thumbnail_fast_impl(JNIEnv *env, const char *path, double po
         std::lock_guard<std::mutex> lock(g_hw_ctx_mutex);
         if (g_hw_device_ctx) {
             codec_ctx->hw_device_ctx = av_buffer_ref(g_hw_device_ctx);
+            if (codec_ctx->hw_device_ctx && used_hw_dec) {
+                *used_hw_dec = true;
+            }
         }
     }
     
@@ -669,10 +672,13 @@ jni_func(jobject, grabThumbnailFast, jstring jpath, jdouble position, jint dimen
         return NULL;
     }
 
-    jobject bitmap = grab_thumbnail_fast_impl(env, path.c_str(), position, dimension, use_hw_dec == JNI_TRUE);
-    if (!bitmap && use_hw_dec == JNI_TRUE) {
+    bool used_hw_dec = false;
+    jobject bitmap = grab_thumbnail_fast_impl(
+        env, path.c_str(), position, dimension, use_hw_dec == JNI_TRUE, &used_hw_dec);
+    if (!bitmap && used_hw_dec) {
         ALOGW("Thumbnail | Hardware path failed, retrying with software decode");
-        bitmap = grab_thumbnail_fast_impl(env, path.c_str(), position, dimension, false);
+        bitmap = grab_thumbnail_fast_impl(
+            env, path.c_str(), position, dimension, false, nullptr);
     }
 
     return bitmap;
