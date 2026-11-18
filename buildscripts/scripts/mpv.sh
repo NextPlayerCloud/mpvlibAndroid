@@ -54,6 +54,10 @@ if ! git apply --reverse --check ../../patches/mpv_android_font_cache.patch 2>/d
 	git apply ../../patches/mpv_android_font_cache.patch
 fi
 
+if ! git apply --reverse --check ../../patches/mpv_gpu_osd_vao_init.patch 2>/dev/null; then
+	git apply ../../patches/mpv_gpu_osd_vao_init.patch
+fi
+
 if ! git apply --reverse --check ../../patches/mpv_android_video_rect.patch 2>/dev/null; then
 	git apply ../../patches/mpv_android_video_rect.patch
 fi
