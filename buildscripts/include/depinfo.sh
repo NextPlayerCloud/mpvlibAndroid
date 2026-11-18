@@ -22,7 +22,6 @@ v_libxml2=2.15.4
 v_fontconfig=2.18.3
 v_libmysofa=1.3.5
 v_libaribcaption=1.1.2
-v_fontconfig=2.18.3
 v_curl=8.23.0
 # libbluray, libdvdread and libdvdnav stay pinned: the bundled patches target these exact releases.
 v_libbluray=1.4.1

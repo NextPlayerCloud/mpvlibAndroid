@@ -25,12 +25,12 @@ index 695f23fc2..bb918ff64 100644
 +        // existing brightness/contrast behaviour is preserved.
 +        float huecos = params->saturation * cos(params->hue);
 +        float huesin = params->saturation * sin(params->hue);
-+        
++
 +        // YUV to RGB (BT.709)
 +        float Y00 = 1.0f, Y01 = 0.0f,       Y02 = 1.5748f;
 +        float Y10 = 1.0f, Y11 = -0.187327f, Y12 = -0.468124f;
 +        float Y20 = 1.0f, Y21 = 1.8556f,    Y22 = 0.0f;
-+        
++
 +        // RGB to YUV (BT.709 inverse)
 +        float I00 = 0.2126f,    I01 = 0.7152f,    I02 = 0.0722f;
 +        float I10 = -0.114572f, I11 = -0.385428f, I12 = 0.5000f;
@@ -229,11 +229,11 @@ index b96bb9754..abababb36 100644
 +
      GLSLF("}\n");
  }
-diff --git a/video/out/vo_gpu_next.c b/video/out/vo_gpu_next.c
-index 68af6bb67..23255e071 100644
---- a/video/out/vo_gpu_next.c
-+++ b/video/out/vo_gpu_next.c
-@@ -218,6 +218,10 @@ struct priv {
+diff --git a/video/out/gpu_next/video.c b/video/out/gpu_next/video.c
+index 111111111..222222222 100644
+--- a/video/out/gpu_next/video.c
++++ b/video/out/gpu_next/video.c
+@@ -221,6 +221,10 @@ struct mppl_video {
      const struct pl_hook_par **source_parameters;
      enum pl_color_levels output_levels;
  
@@ -244,7 +244,7 @@ index 68af6bb67..23255e071 100644
      struct pl_icc_params icc_params;
      char *icc_path;
      pl_icc_object icc_profile;
-@@ -3786,6 +3790,7 @@ static void uninit(struct vo *vo)
+@@ -3867,6 +3871,7 @@ void mppl_video_uninit(struct mppl_video *p)
          pl_tex_destroy(p->gpu, &p->sub_tex[i]);
      for (int i = 0; i < p->num_user_hooks; i++)
          pl_mpv_user_shader_destroy(&p->user_hooks[i].hook);
@@ -252,15 +252,14 @@ index 68af6bb67..23255e071 100644
  
      timer_pool_destroy(p->sw_upload_timer);
  
-@@ -4349,6 +4354,123 @@ static void update_render_options(struct vo *vo)
+@@ -4401,6 +4406,122 @@ static void update_render_options(struct mppl_video *p)
      update_icc_opts(p, opts->icc_opts);
  
      pars->params.num_hooks = 0;
 +
 +    // ── gpu-next sharpen: mirror vo=gpu pass_sample_unsharp via GLSL hook ──
 +    // Rebuilds only when the parameter changes to avoid unnecessary recompiles.
-+    const struct gl_video_opts *gl_opts = p->opts_cache->opts;
-+    float sp = gl_opts->unsharp;
++    float sp = opts->unsharp;
 +    if (sp != p->last_sharpen_param) {
 +        pl_mpv_user_shader_destroy(&p->sharpen_hook);
 +        p->last_sharpen_param = sp;
@@ -366,7 +365,7 @@ index 68af6bb67..23255e071 100644
 +            p->sharpen_hook = pl_mpv_user_shader_parse(
 +                p->gpu, shader, strlen(shader));
 +            if (!p->sharpen_hook)
-+                MP_WARN(vo, "gpu-next: failed to compile sharpen hook\n");
++                MP_WARN(p, "gpu-next: failed to compile sharpen hook\n");
 +        }
 +    }
 +    if (p->sharpen_hook)
