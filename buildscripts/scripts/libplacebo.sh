@@ -22,6 +22,7 @@ export CFLAGS="-I$prefix_dir/include ${CFLAGS:-}"
 export CXXFLAGS="-I$prefix_dir/include ${CXXFLAGS:-}"
 export LDFLAGS="-L$prefix_dir/lib ${LDFLAGS:-}"
 meson setup "$build" --cross-file "$prefix_dir"/crossfile.txt \
+	-Db_lto=true \
 	-Dopengl=enabled -Dvulkan=enabled \
 	-Dshaderc=enabled -Dglslang=disabled \
 	-Dlcms=enabled -Ddemos=false

@@ -97,6 +97,7 @@ git diff --quiet HEAD -- "$motion_core" "$motion_header" LICENSE.LGPL || {
 
 meson setup "$build" --cross-file "$prefix_dir"/crossfile.txt \
 	--default-library shared \
+	-Db_lto=true \
 	-D{iconv,uchardet}=enabled \
 	-D{libarchive,dvdnav}=enabled \
 	-Dlua=luajit \
