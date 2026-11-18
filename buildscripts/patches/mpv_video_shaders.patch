@@ -252,7 +252,7 @@ index 111111111..222222222 100644
  
      timer_pool_destroy(p->sw_upload_timer);
  
-@@ -4401,6 +4406,122 @@ static void update_render_options(struct mppl_video *p)
+@@ -4401,6 +4406,127 @@ static void update_render_options(struct mppl_video *p)
      update_icc_opts(p, opts->icc_opts);
  
      pars->params.num_hooks = 0;
@@ -271,9 +271,10 @@ index 111111111..222222222 100644
 +            // For negative values: classic USM (matches the negative-branch
 +            // in pass_sample_unsharp). For positive [0,5]: full Anime4K RCAS.
 +            char shader[8192];
++            int shader_len = 0;
 +            if (sp < 0.0f) {
 +                // Classic USM unsharp mask (negative range).
-+                snprintf(shader, sizeof(shader),
++                shader_len = snprintf(shader, sizeof(shader),
 +                    "//!HOOK OUTPUT\n"
 +                    "//!BIND HOOKED\n"
 +                    "//!DESC sharpen (classic USM, param=%.4f)\n"
@@ -300,7 +301,7 @@ index 111111111..222222222 100644
 +                float lobe_scale = MPCLAMP(p_clamped * 0.2f, 0.0f, 1.0f);
 +                float usm_str   = p_clamped * 0.3f;
 +                float dk_str    = p_clamped * 0.12f;
-+                snprintf(shader, sizeof(shader),
++                shader_len = snprintf(shader, sizeof(shader),
 +                    "//!HOOK OUTPUT\n"
 +                    "//!BIND HOOKED\n"
 +                    "//!DESC sharpen (9-tap RCAS+USM+VD, param=%.4f)\n"
@@ -362,10 +363,14 @@ index 111111111..222222222 100644
 +                    (double)sp, (double)lobe_scale,
 +                    (double)usm_str, (double)dk_str);
 +            }
-+            p->sharpen_hook = pl_mpv_user_shader_parse(
-+                p->gpu, shader, strlen(shader));
-+            if (!p->sharpen_hook)
-+                MP_WARN(p, "gpu-next: failed to compile sharpen hook\n");
++            if (shader_len < 0 || shader_len >= (int)sizeof(shader)) {
++                MP_WARN(p, "gpu-next: sharpen hook shader buffer truncated\n");
++            } else {
++                p->sharpen_hook = pl_mpv_user_shader_parse(
++                    p->gpu, shader, (size_t)shader_len);
++                if (!p->sharpen_hook)
++                    MP_WARN(p, "gpu-next: failed to compile sharpen hook\n");
++            }
 +        }
 +    }
 +    if (p->sharpen_hook)
