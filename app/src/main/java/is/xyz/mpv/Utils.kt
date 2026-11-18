@@ -25,37 +25,33 @@ object Utils {
         val assetManager = context.assets
         val files = arrayOf("cacert.pem")
         val configDir = context.filesDir.path
-
-        for (name in files) {
-            copyAssetFile(assetManager, name, File("$configDir/$name"))
+        for (filename in files) {
+            var ins: InputStream? = null
+            var out: OutputStream? = null
+            try {
+                ins = assetManager.open(filename, AssetManager.ACCESS_STREAMING)
+                val outFile = File("$configDir/$filename")
+                // Note that .available() officially returns an *estimated* number of bytes available
+                // this is only true for generic streams, asset streams return the full file size
+                if (outFile.length() == ins.available().toLong()) {
+                    Log.v(TAG, "Skipping copy of asset file (exists same size): $filename")
+                    continue
+                }
+                out = FileOutputStream(outFile)
+                ins.copyTo(out)
+                Log.w(TAG, "Copied asset file: $filename")
+            } catch (e: IOException) {
+                Log.e(TAG, "Failed to copy asset file: $filename", e)
+            } finally {
+                ins?.close()
+                out?.close()
+            }
         }
-
-        // we used to ship this, but it's no longer needed
+        // Older versions copied a 15 MB fallback font here. Fontconfig now finds a system font
+        // for every script, so free the space and keep mpv from loading the stale copy.
         File("$configDir/subfont.ttf").delete()
 
         writeFontsConf(context, File("$configDir/fonts.conf"))
-    }
-
-    private fun copyAssetFile(assetManager: AssetManager, name: String, outFile: File) {
-        var ins: InputStream? = null
-        var out: OutputStream? = null
-        try {
-            ins = assetManager.open(name, AssetManager.ACCESS_STREAMING)
-            // Note that .available() officially returns an *estimated* number of bytes available
-            // this is only true for generic streams, asset streams return the full file size
-            if (outFile.length() == ins.available().toLong()) {
-                Log.v(TAG, "Skipping copy of asset file (exists same size): $name")
-                return
-            }
-            out = FileOutputStream(outFile)
-            ins.copyTo(out)
-            Log.w(TAG, "Copied asset file: $name")
-        } catch (e: IOException) {
-            Log.e(TAG, "Failed to copy asset file: $name", e)
-        } finally {
-            ins?.close()
-            out?.close()
-        }
     }
 
     private const val FONTS_CONF_MARKER = "<!-- Written by mpvlib. Remove this line to keep your own changes. -->"
@@ -64,12 +60,6 @@ object Utils {
      * Points fontconfig at the Android system fonts with a writable cache, so subtitle tracks
      * load the cache instead of scanning every font. A fonts.conf without the marker line
      * belongs to the user and is left alone.
-     *
-     * mpvEx 备注：libass 启用 fontconfig 后，mpv 会把 <config-dir>/fonts.conf 交给
-     * ass_set_fonts()（mpv/sub/ass_mp.c: mp_find_config_file(tmp, global, "fonts.conf")）。
-     * 不写这个文件，libass 会退回 FcInitLoadConfig() 的内置配置，其字体目录指向
-     * /usr/share/fonts（Android 上为空），所有字形请求落到内置兜底字体 subfont.ttf；
-     * 该字体不含韩文音节（U+AC00–D7A3），HarfBuzz 只能把音节拆成 Jamo 逐个渲染。
      */
     private fun writeFontsConf(context: Context, configFile: File) {
         val cacheDir = File(context.cacheDir, "fontconfig")
@@ -78,7 +68,6 @@ object Utils {
             "<fontconfig>",
             "<dir>/system/fonts/</dir>",
             "<dir>/product/fonts/</dir>",
-            "<dir>/system_ext/fonts/</dir>", // Android 11+
             "<cachedir>${cacheDir.path}</cachedir>",
             // Android has no API for its generic families, so name the stock ones.
             "<alias><family>serif</family><prefer><family>Noto Serif</family></prefer></alias>",
