@@ -215,15 +215,21 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import glob, subprocess, sys
+          import glob, os, subprocess, sys
 
           so_files = sorted(glob.glob("app/src/main/libs/*/*.so"))
           if not so_files:
               print("No .so files found under app/src/main/libs", file=sys.stderr)
               sys.exit(1)
 
+          # Google Play / Android 15+ 16KB page size requirement applies to 64-bit ABIs.
+          # 32-bit NDK prebuilt libc++_shared.so and ndk-build defaults use 4KB (0x1000).
+          require_16kb_abis = {"arm64-v8a", "x86_64"}
+
           failed = False
           for so in so_files:
+              abi = os.path.basename(os.path.dirname(so))
+              min_required = 0x4000 if abi in require_16kb_abis else 0x1000
               out = subprocess.check_output(["readelf", "-lW", so], text=True)
               aligns = []
               for line in out.splitlines():
@@ -231,8 +237,8 @@ jobs:
                   if parts and parts[0] == "LOAD":
                       align = int(parts[-1], 16)
                       aligns.append(align)
-                      if align < 0x4000:
-                          print(f"FAIL {so}: PT_LOAD align {hex(align)} < 0x4000", file=sys.stderr)
+                      if align < min_required:
+                          print(f"FAIL {so}: PT_LOAD align {hex(align)} < {hex(min_required)}", file=sys.stderr)
                           failed = True
               if not aligns:
                   print(f"FAIL {so}: no PT_LOAD segments found", file=sys.stderr)
