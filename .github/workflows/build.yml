@@ -16,8 +16,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  patch-check:
+    name: Verify Upstream Patches
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Dry-run mpv and FFmpeg patches
+        run: |
+          set -euxo pipefail
+          source buildscripts/include/depinfo.sh
+
+          git clone --depth 1 --branch fongmi https://github.com/FongMi/mpv.git /tmp/mpv-check
+          for p in mpv_video_shaders.patch mpv_android_fdsan_fork.patch mpv_lsfg_layer.patch mpv_android_font_cache.patch; do
+            git -C /tmp/mpv-check apply --check "$GITHUB_WORKSPACE/buildscripts/patches/$p"
+          done
+
+          git clone --depth 1 --branch "$v_ci_ffmpeg" https://github.com/FongMi/FFmpeg.git /tmp/ffmpeg-check
+          git -C /tmp/ffmpeg-check apply --check "$GITHUB_WORKSPACE/buildscripts/patches/ffmpeg_force_mpegts.patch"
+
   build:
     name: Build Android AAR
+    needs: patch-check
     runs-on: ubuntu-24.04
 
     permissions:
