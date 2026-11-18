@@ -663,14 +663,11 @@ jni_func(jobject, grabThumbnailFast, jstring jpath, jdouble position, jint dimen
         return NULL;
     }
 
-    const char *path_chars = env->GetStringUTFChars(jpath, NULL);
-    if (!path_chars) {
+    std::string path;
+    if (!jstring_to_utf8(env, jpath, &path) || path.empty()) {
         ALOGE("Thumbnail | Invalid path");
         return NULL;
     }
-
-    std::string path(path_chars);
-    env->ReleaseStringUTFChars(jpath, path_chars);
 
     jobject bitmap = grab_thumbnail_fast_impl(env, path.c_str(), position, dimension, use_hw_dec == JNI_TRUE);
     if (!bitmap && use_hw_dec == JNI_TRUE) {
