@@ -28,8 +28,9 @@ include $(PREBUILT_SHARED_LIBRARY)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE    := libplayer
-LOCAL_CFLAGS    := -Werror
-LOCAL_CPPFLAGS  += -std=c++11
+LOCAL_CFLAGS    := -Werror -fvisibility=hidden -ffunction-sections -fdata-sections
+LOCAL_CPPFLAGS  += -std=c++17
+LOCAL_LDFLAGS   += -Wl,--gc-sections
 LOCAL_SRC_FILES := \
 	main.cpp \
 	stream.cpp \
