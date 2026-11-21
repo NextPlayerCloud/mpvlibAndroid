@@ -179,15 +179,15 @@ diff --git a/video/out/vo.c b/video/out/vo.c
 index 80b8654359..f6fca418b6 100644
 --- a/video/out/vo.c
 +++ b/video/out/vo.c
-@@ -178,6 +178,7 @@ struct vo_internal {
+@@ -199,6 +199,7 @@ struct vo_internal {
      int64_t delayed_count;
      int64_t drop_count;
      bool dropped_frame;             // the previous frame was dropped
 +    int64_t resume_until;           // no timing drops until then (unpause)
  
-     struct vo_frame *current_frame; // last frame queued to the VO
- 
-@@ -1164,6 +1165,9 @@ static bool render_frame(struct vo *vo)
+     // The last flips by flip count, for the presentation feedback. A backend
+     // reports a present up to the swapchain depth plus one flips back.
+@@ -1506,6 +1507,9 @@ static bool render_frame(struct vo *vo)
      // instead of just freezing the display forever.
      in->dropped_frame &= now - in->prev_vsync < MP_TIME_MS_TO_NS(100);
      in->dropped_frame &= in->hasframe_rendered;
@@ -197,7 +197,7 @@ index 80b8654359..f6fca418b6 100644
  
      // Setup parameters for the next time this frame is drawn. ("frame" is the
      // frame currently drawn, while in->current_frame is the potentially next.)
-@@ -1450,6 +1454,8 @@ void vo_set_paused(struct vo *vo, bool paused)
+@@ -1838,6 +1842,8 @@ void vo_set_paused(struct vo *vo, bool paused)
      mp_mutex_lock(&in->lock);
      if (in->paused != paused) {
          in->paused = paused;
