@@ -1,5 +1,5 @@
 diff --git a/video/csputils.c b/video/csputils.c
-index 695f23fc2..bb918ff64 100644
+index 695f23fc2c..bb918ff645 100644
 --- a/video/csputils.c
 +++ b/video/csputils.c
 @@ -375,6 +375,56 @@ void mp_get_csp_matrix(struct mp_csp_params *params, struct pl_transform3x3 *m)
@@ -25,12 +25,12 @@ index 695f23fc2..bb918ff64 100644
 +        // existing brightness/contrast behaviour is preserved.
 +        float huecos = params->saturation * cos(params->hue);
 +        float huesin = params->saturation * sin(params->hue);
-+
++        
 +        // YUV to RGB (BT.709)
 +        float Y00 = 1.0f, Y01 = 0.0f,       Y02 = 1.5748f;
 +        float Y10 = 1.0f, Y11 = -0.187327f, Y12 = -0.468124f;
 +        float Y20 = 1.0f, Y21 = 1.8556f,    Y22 = 0.0f;
-+
++        
 +        // RGB to YUV (BT.709 inverse)
 +        float I00 = 0.2126f,    I01 = 0.7152f,    I02 = 0.0722f;
 +        float I10 = -0.114572f, I11 = -0.385428f, I12 = 0.5000f;
@@ -60,7 +60,7 @@ index 695f23fc2..bb918ff64 100644
  
      // The values below are written in 0-255 scale - thus bring s into range.
 diff --git a/video/out/gpu/video_shaders.c b/video/out/gpu/video_shaders.c
-index b96bb9754..abababb36 100644
+index b96bb9754c..abababb362 100644
 --- a/video/out/gpu/video_shaders.c
 +++ b/video/out/gpu/video_shaders.c
 @@ -1022,21 +1022,151 @@ void pass_sample_deband(struct gl_shader_cache *sc, struct deband_opts *opts,
@@ -230,10 +230,10 @@ index b96bb9754..abababb36 100644
      GLSLF("}\n");
  }
 diff --git a/video/out/gpu_next/video.c b/video/out/gpu_next/video.c
-index 111111111..222222222 100644
+index 4157dfa223..d7ce05c3e2 100644
 --- a/video/out/gpu_next/video.c
 +++ b/video/out/gpu_next/video.c
-@@ -221,6 +221,10 @@ struct mppl_video {
+@@ -210,6 +210,10 @@ struct mppl_video {
      const struct pl_hook_par **source_parameters;
      enum pl_color_levels output_levels;
  
@@ -244,7 +244,7 @@ index 111111111..222222222 100644
      struct pl_icc_params icc_params;
      char *icc_path;
      pl_icc_object icc_profile;
-@@ -3867,6 +3871,7 @@ void mppl_video_uninit(struct mppl_video *p)
+@@ -3807,6 +3811,7 @@ void mppl_video_uninit(struct mppl_video *p)
          pl_tex_destroy(p->gpu, &p->sub_tex[i]);
      for (int i = 0; i < p->num_user_hooks; i++)
          pl_mpv_user_shader_destroy(&p->user_hooks[i].hook);
@@ -252,14 +252,15 @@ index 111111111..222222222 100644
  
      timer_pool_destroy(p->sw_upload_timer);
  
-@@ -4401,6 +4406,127 @@ static void update_render_options(struct mppl_video *p)
+@@ -4341,6 +4346,123 @@ static void update_render_options(struct mppl_video *p)
      update_icc_opts(p, opts->icc_opts);
  
      pars->params.num_hooks = 0;
 +
 +    // ── gpu-next sharpen: mirror vo=gpu pass_sample_unsharp via GLSL hook ──
 +    // Rebuilds only when the parameter changes to avoid unnecessary recompiles.
-+    float sp = opts->unsharp;
++    const struct gl_video_opts *gl_opts = p->opts_cache->opts;
++    float sp = gl_opts->unsharp;
 +    if (sp != p->last_sharpen_param) {
 +        pl_mpv_user_shader_destroy(&p->sharpen_hook);
 +        p->last_sharpen_param = sp;
@@ -271,10 +272,9 @@ index 111111111..222222222 100644
 +            // For negative values: classic USM (matches the negative-branch
 +            // in pass_sample_unsharp). For positive [0,5]: full Anime4K RCAS.
 +            char shader[8192];
-+            int shader_len = 0;
 +            if (sp < 0.0f) {
 +                // Classic USM unsharp mask (negative range).
-+                shader_len = snprintf(shader, sizeof(shader),
++                snprintf(shader, sizeof(shader),
 +                    "//!HOOK OUTPUT\n"
 +                    "//!BIND HOOKED\n"
 +                    "//!DESC sharpen (classic USM, param=%.4f)\n"
@@ -301,7 +301,7 @@ index 111111111..222222222 100644
 +                float lobe_scale = MPCLAMP(p_clamped * 0.2f, 0.0f, 1.0f);
 +                float usm_str   = p_clamped * 0.3f;
 +                float dk_str    = p_clamped * 0.12f;
-+                shader_len = snprintf(shader, sizeof(shader),
++                snprintf(shader, sizeof(shader),
 +                    "//!HOOK OUTPUT\n"
 +                    "//!BIND HOOKED\n"
 +                    "//!DESC sharpen (9-tap RCAS+USM+VD, param=%.4f)\n"
@@ -363,14 +363,10 @@ index 111111111..222222222 100644
 +                    (double)sp, (double)lobe_scale,
 +                    (double)usm_str, (double)dk_str);
 +            }
-+            if (shader_len < 0 || shader_len >= (int)sizeof(shader)) {
-+                MP_WARN(p, "gpu-next: sharpen hook shader buffer truncated\n");
-+            } else {
-+                p->sharpen_hook = pl_mpv_user_shader_parse(
-+                    p->gpu, shader, (size_t)shader_len);
-+                if (!p->sharpen_hook)
-+                    MP_WARN(p, "gpu-next: failed to compile sharpen hook\n");
-+            }
++            p->sharpen_hook = pl_mpv_user_shader_parse(
++                p->gpu, shader, strlen(shader));
++            if (!p->sharpen_hook)
++                MP_WARN(p, "gpu-next: failed to compile sharpen hook\n");
 +        }
 +    }
 +    if (p->sharpen_hook)
