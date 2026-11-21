@@ -1,0 +1,25 @@
+diff --git a/video/out/gpu/video.c b/video/out/gpu/video.c
+index 022f1c8bde..b9c21d1a2e 100644
+--- a/video/out/gpu/video.c
++++ b/video/out/gpu/video.c
+@@ -4017,7 +4017,8 @@ static bool pass_upload_image(struct gl_video *p, struct mp_image *mpi, uint64_t
+ 
+         pass_describe(p, "map frame (hwdec)");
+         timer_pool_start(p->upload_timer);
+-        bool ok = ra_hwdec_mapper_map(p->hwdec_mapper, vimg->mpi) >= 0;
++        int map_res = ra_hwdec_mapper_map(p->hwdec_mapper, vimg->mpi);
++        bool ok = map_res >= 0;
+         vimg->hwdec_mapped = ok;
+         // The frame stays mapped and in use until it is replaced.
+         if (ok)
+@@ -4040,6 +4041,10 @@ static bool pass_upload_image(struct gl_video *p, struct mp_image *mpi, uint64_t
+                     .flipped = p->image_params.vflip,
+                 };
+             }
++        } else if (map_res == RA_HWDEC_MAP_RETRY) {
++            MP_VERBOSE(p, "Hardware decoded surface is not ready yet; retrying.\n");
++            unref_current_image(p);
++            return false;
+         } else {
+             MP_FATAL(p, "Mapping hardware decoded surface failed.\n");
+             goto error;

@@ -74,6 +74,12 @@ if ! git apply --reverse --check ../../patches/mpv_dolby_vision_output_mode.patc
 	git apply ../../patches/mpv_dolby_vision_output_mode.patch
 fi
 
+if ! grep -q "RA_HWDEC_MAP_RETRY" video/out/gpu/video.c; then
+	if ! git apply --reverse --check ../../patches/mpv_gpu_hwdec_retry.patch 2>/dev/null; then
+		git apply ../../patches/mpv_gpu_hwdec_retry.patch
+	fi
+fi
+
 unset CC CXX # meson wants these unset
 
 check_iconv_files
