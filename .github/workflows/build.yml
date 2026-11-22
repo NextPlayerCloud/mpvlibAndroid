@@ -33,7 +33,7 @@ jobs:
           source buildscripts/include/depinfo.sh
 
           git clone --depth 1 --branch fongmi https://github.com/FongMi/mpv.git /tmp/mpv-check
-          for p in mpv_video_shaders.patch mpv_android_fdsan_fork.patch mpv_lsfg_layer.patch mpv_android_font_cache.patch mpv_gpu_osd_vao_init.patch; do
+          for p in mpv_video_shaders.patch mpv_android_fdsan_fork.patch mpv_lsfg_layer.patch mpv_android_font_cache.patch mpv_android_video_rect.patch mpv_gpu_hwdec_retry.patch; do
             git -C /tmp/mpv-check apply --check "$GITHUB_WORKSPACE/buildscripts/patches/$p"
           done
 

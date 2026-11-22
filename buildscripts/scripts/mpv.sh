@@ -54,24 +54,8 @@ if ! git apply --reverse --check ../../patches/mpv_android_font_cache.patch 2>/d
 	git apply ../../patches/mpv_android_font_cache.patch
 fi
 
-if ! git apply --reverse --check ../../patches/mpv_gpu_osd_vao_init.patch 2>/dev/null; then
-	git apply ../../patches/mpv_gpu_osd_vao_init.patch
-fi
-
 if ! git apply --reverse --check ../../patches/mpv_android_video_rect.patch 2>/dev/null; then
 	git apply ../../patches/mpv_android_video_rect.patch
-fi
-
-if ! git apply --reverse --check ../../patches/mpv_android_pause_passthrough.patch 2>/dev/null; then
-	git apply ../../patches/mpv_android_pause_passthrough.patch
-fi
-
-if ! git apply --reverse --check ../../patches/mpv_osd_vao_fix.patch 2>/dev/null; then
-	git apply ../../patches/mpv_osd_vao_fix.patch
-fi
-
-if ! git apply --reverse --check ../../patches/mpv_dolby_vision_output_mode.patch 2>/dev/null; then
-	git apply ../../patches/mpv_dolby_vision_output_mode.patch
 fi
 
 if ! grep -q "RA_HWDEC_MAP_RETRY" video/out/gpu/video.c; then
