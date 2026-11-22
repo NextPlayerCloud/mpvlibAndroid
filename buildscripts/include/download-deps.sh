@@ -309,6 +309,14 @@ if [ ! -d libass ]; then
 			"${LIBASS_GIT_URL:-https://github.com/libass/libass}" libass
 	fi
 fi
+for libass_patch in ../patches/libass-font-size-em.patch ../patches/libass-line-height.patch; do
+	if patch --batch --forward --fuzz=0 --dry-run -d libass -p1 < "$libass_patch" >/dev/null 2>&1; then
+		patch --batch --forward --fuzz=0 -d libass -p1 < "$libass_patch"
+	elif ! patch --batch --reverse --fuzz=0 --dry-run -d libass -p1 < "$libass_patch" >/dev/null 2>&1; then
+		echo "libass source does not match $libass_patch." >&2
+		exit 1
+	fi
+done
 
 # luajit
 check_sha256() {
