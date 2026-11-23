@@ -1,0 +1,16 @@
+diff --git a/video/out/hwdec/hwdec_aimagereader.c b/video/out/hwdec/hwdec_aimagereader.c
+index 1d41f3f1d8..b8a1b5c3d0 100644
+--- a/video/out/hwdec/hwdec_aimagereader.c
++++ b/video/out/hwdec/hwdec_aimagereader.c
+@@ -416,6 +416,11 @@ static int init(struct ra_hwdec *hw)
+             eglQueryString(eglGetCurrentDisplay(), EGL_EXTENSIONS);
+         if (!gl_check_extension(exts, "EGL_ANDROID_image_native_buffer"))
+             return -1;
++        if (!gl_check_extension(exts, "EGL_ANDROID_native_fence_sync") ||
++            !eglGetProcAddress("eglCreateSyncKHR") ||
++            !eglGetProcAddress("eglDestroySyncKHR") ||
++            !eglGetProcAddress("eglDupNativeFenceFDANDROID"))
++            return -1;
+     }
+ 
+     JNIEnv *env = MP_JNI_GET_ENV(hw);

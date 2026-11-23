@@ -64,6 +64,10 @@ if ! grep -q "RA_HWDEC_MAP_RETRY" video/out/gpu/video.c; then
 	fi
 fi
 
+if ! git apply --reverse --check ../../patches/mpv_aimagereader_gl_fence_check.patch 2>/dev/null; then
+	git apply ../../patches/mpv_aimagereader_gl_fence_check.patch
+fi
+
 unset CC CXX # meson wants these unset
 
 check_iconv_files
